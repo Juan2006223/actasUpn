@@ -1,0 +1,60 @@
+# Variables de entorno y secretos (NUNCA subir)
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Bases de datos locales y dumps (contienen usuarios, hashes y firmas)
+*.sqlite3
+*.sqlite3-journal
+*.db
+*.sql
+*.dump
+
+# Python / Django
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+ENV/
+staticfiles/
+media/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node / Frontend (Vite)
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+build/
+.vite/
+frontend/.vite/
+
+# Certificados, llaves privadas y credenciales
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets.*
+credentials.*
+
+# Logs y archivos temporales del sistema / IDE
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
