@@ -94,3 +94,24 @@ class TestUsuariosDomainAndApp(unittest.TestCase):
         self.assertEqual(nuevo.role, "TEACHER")
         with self.assertRaises(ValueError):
             self.crear_uc.ejecutar(document_number="8090100", email="otro@upn.edu.co")
+
+
+from django.contrib.auth import get_user_model  # noqa: E402
+from django.test import TestCase  # noqa: E402
+from rest_framework.test import APIClient  # noqa: E402
+from rest_framework_simplejwt.tokens import RefreshToken  # noqa: E402
+
+
+class RenovarSesionApiTests(TestCase):
+    def test_renueva_la_sesion_con_el_token_de_renovacion(self):
+        user = get_user_model().objects.create_user(username='doc', password='x', role='TEACHER')
+        refresh = RefreshToken.for_user(user)
+        client = APIClient()
+        r = client.post('/api/auth/refresh/', {'refresh': str(refresh)}, format='json')
+        self.assertEqual(r.status_code, 200)
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {r.data['access']}")
+        self.assertEqual(client.get('/api/auth/me/').status_code, 200)
+
+    def test_token_de_renovacion_invalido_se_rechaza(self):
+        r = APIClient().post('/api/auth/refresh/', {'refresh': 'no-es-un-token'}, format='json')
+        self.assertEqual(r.status_code, 401)

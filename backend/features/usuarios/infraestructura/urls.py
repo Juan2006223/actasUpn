@@ -1,4 +1,5 @@
 from django.urls import path
+from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
     login_view,
     me_view,
@@ -12,6 +13,8 @@ from .views import (
 urlpatterns = [
     path('auth/login/', login_view, name='login'),
     path('auth/me/', me_view, name='me'),
+    # Renueva la sesión sin pedir la contraseña mientras la persona sigue usando el aplicativo.
+    path('auth/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
     path('usuarios/', usuarios_collection_view, name='usuarios-collection'),
     path('usuarios/buscar/', search_users_view, name='usuarios-buscar'),
     path('usuarios/importar/', importar_usuarios_view, name='usuarios-importar'),

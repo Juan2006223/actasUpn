@@ -7,7 +7,7 @@ import {
     IconEyeOff,
 } from '../../../../shared/components/ui/IconosMemorian';
 
-export default function LoginFormCard({ onSubmitLogin, loading, error }) {
+export default function LoginFormCard({ onSubmitLogin, loading, error, aviso }) {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -40,6 +40,12 @@ export default function LoginFormCard({ onSubmitLogin, loading, error }) {
                         Ingresa tus credenciales para acceder al sistema.
                     </p>
                 </div>
+
+                {aviso && !error && (
+                    <div role="status" className="mb-4 p-3 text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-xl">
+                        {aviso}
+                    </div>
+                )}
 
                 {error && (
                     <div className="mb-4 p-3 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-xl">

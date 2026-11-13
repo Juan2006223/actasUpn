@@ -25,3 +25,13 @@ test('authModel - roles, permisos de grupos/usuarios y nombre completo', () => {
     assert.equal(puedeGestionarGrupos({ role: 'ASISTENTE' }), false);
     assert.equal(obtenerNombreCompleto({ first_name: 'Ana', last_name: 'Gomez' }), 'Ana Gomez');
 });
+
+test('authModel - inactividad: avisa 1 minuto antes y vence a las 3 horas', async () => {
+    const { estadoInactividad, segundosRestantes, INACTIVIDAD_MAX_MS } = await import('./authModel.js');
+    const t0 = 1_000_000;
+    assert.equal(estadoInactividad(t0, t0 + 60_000), 'activa');
+    assert.equal(estadoInactividad(t0, t0 + INACTIVIDAD_MAX_MS - 30_000), 'aviso');
+    assert.equal(estadoInactividad(t0, t0 + INACTIVIDAD_MAX_MS), 'vencida');
+    assert.equal(estadoInactividad(null, t0), 'activa'); // sin registro aún: no se cierra
+    assert.equal(segundosRestantes(t0, t0 + INACTIVIDAD_MAX_MS - 30_000), 30);
+});

@@ -1,11 +1,20 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../aplicacion/AuthContext';
+import { useAuth, CLAVE_MOTIVO_SALIDA } from '../../aplicacion/AuthContext';
+import { MOTIVOS_SALIDA } from '../../dominio/authModel';
 import HeroCardBanner from './HeroCardBanner';
 import LoginFormCard from './LoginFormCard';
 
 export default function Login() {
     const [error, setError] = useState('');
+    // Si la sesión se cerró sola (inactividad o expiración), se explica por qué.
+    const [aviso] = useState(() => {
+        try {
+            return MOTIVOS_SALIDA[sessionStorage.getItem(CLAVE_MOTIVO_SALIDA)] || '';
+        } catch {
+            return '';
+        }
+    });
     const [loading, setLoading] = useState(false);
     const { login } = useAuth();
     const navigate = useNavigate();
@@ -37,6 +46,7 @@ export default function Login() {
                         onSubmitLogin={handleLogin}
                         loading={loading}
                         error={error}
+                        aviso={aviso}
                     />
                 </div>
             </div>
