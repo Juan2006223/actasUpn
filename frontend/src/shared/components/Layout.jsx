@@ -28,13 +28,12 @@ export default function Layout() {
                 rolUsuario={user?.role}
                 onNavigate={(path) => navigate(path)}
                 onToggleExpandir={() => setSidebarExpandido((v) => !v)}
+                onCerrarSesion={() => logout()}
             />
 
             <main className="flex-1 space-y-5 min-w-0 transition-all duration-300">
                 <AppHeader
                     seccionActivaNombre={seccionActivaNombre}
-                    onToggleSidebar={() => setSidebarExpandido((v) => !v)}
-                    onCerrarSesion={logout}
                     usuario={user}
                 />
 
@@ -51,6 +50,7 @@ export default function Layout() {
                 currentPath={location.pathname}
                 rolUsuario={user?.role}
                 onNavigate={(path) => navigate(path)}
+                onCerrarSesion={() => logout()}
             />
         </div>
     );

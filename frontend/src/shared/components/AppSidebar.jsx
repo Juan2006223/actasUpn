@@ -1,14 +1,14 @@
 import React from 'react';
+import { PanelLeftOpen, PanelLeftClose, LogOut } from 'lucide-react';
 import {
     IconBrandMemorian,
     IconDocumentActas,
     IconCommunityAcuerdos,
     IconUsers,
-    IconSettings,
 } from './ui/IconosMemorian';
 import { ROLES_CREADORES_GRUPOS } from '../../features/auth/dominio/authModel';
 
-export default function AppSidebar({ expandido, currentPath, rolUsuario, onNavigate, onToggleExpandir }) {
+export default function AppSidebar({ expandido, currentPath, rolUsuario, onNavigate, onToggleExpandir, onCerrarSesion }) {
     const items = [
         {
             path: '/actas',
@@ -33,6 +33,9 @@ export default function AppSidebar({ expandido, currentPath, rolUsuario, onNavig
         },
     ].filter((item) => item.visible);
 
+    const IconoPanel = expandido ? PanelLeftClose : PanelLeftOpen;
+    const textoPanel = expandido ? 'Contraer menú' : 'Ampliar menú';
+
     return (
         <aside
             className={`hidden md:flex flex-col justify-between py-6 bg-white/90 backdrop-blur-md rounded-4xl border border-slate-100 shadow-soft shrink-0 h-[calc(100vh-3rem)] sticky top-6 transition-all duration-300 ease-in-out no-print ${
@@ -40,18 +43,12 @@ export default function AppSidebar({ expandido, currentPath, rolUsuario, onNavig
             }`}
         >
             <div className="flex flex-col gap-6">
-                <div
-                    onClick={onToggleExpandir}
-                    className={`flex items-center gap-3 cursor-pointer group select-none ${
-                        expandido ? 'px-2' : 'justify-center'
-                    }`}
-                    title={expandido ? 'Contraer menú' : 'Expandir menú'}
-                >
-                    <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center shadow-xs shrink-0 group-hover:scale-105 transition-transform">
+                <div className={`flex items-center gap-3 select-none ${expandido ? 'px-2' : 'flex-col'}`}>
+                    <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center shadow-xs shrink-0">
                         <IconBrandMemorian className="w-7 h-7" />
                     </div>
                     {expandido && (
-                        <div className="min-w-0 transition-opacity duration-200">
+                        <div className="min-w-0 flex-1 transition-opacity duration-200">
                             <h2 className="text-xs font-black text-slate-900 tracking-tight leading-tight">
                                 MEMORIAN
                             </h2>
@@ -60,6 +57,17 @@ export default function AppSidebar({ expandido, currentPath, rolUsuario, onNavig
                             </p>
                         </div>
                     )}
+                    {/* Único control para ampliar o contraer el menú: el ícono de panel lateral lo deja claro. */}
+                    <button
+                        type="button"
+                        onClick={onToggleExpandir}
+                        aria-expanded={expandido}
+                        aria-label={textoPanel}
+                        title={textoPanel}
+                        className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-brand-blue hover:bg-blue-50 transition-all cursor-pointer shrink-0"
+                    >
+                        <IconoPanel className="w-5 h-5" />
+                    </button>
                 </div>
 
                 <nav className="flex flex-col gap-2">
@@ -70,6 +78,7 @@ export default function AppSidebar({ expandido, currentPath, rolUsuario, onNavig
                                 key={item.path}
                                 onClick={() => onNavigate(item.path)}
                                 title={item.label}
+                                aria-current={activo ? 'page' : undefined}
                                 className={`flex items-center gap-3 rounded-2xl transition-all cursor-pointer ${
                                     expandido ? 'px-3 py-2.5 w-full' : 'w-11 h-11 justify-center'
                                 } ${
@@ -95,22 +104,22 @@ export default function AppSidebar({ expandido, currentPath, rolUsuario, onNavig
                 </nav>
             </div>
 
-            <button
-                onClick={onToggleExpandir}
-                className={`flex items-center gap-3 rounded-2xl text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-all cursor-pointer ${
-                    expandido ? 'px-3 py-2.5 w-full' : 'w-11 h-11 justify-center'
-                }`}
-                title={expandido ? 'Contraer' : 'Expandir menú'}
-            >
-                <div className="shrink-0">
-                    <IconSettings className="w-5 h-5" />
-                </div>
-                {expandido && (
-                    <span className="text-[11px] font-black tracking-wider uppercase">
-                        Contraer Menú
-                    </span>
-                )}
-            </button>
+            {onCerrarSesion && (
+                <button
+                    type="button"
+                    onClick={() => onCerrarSesion()}
+                    aria-label="Cerrar sesión"
+                    title="Cerrar sesión"
+                    className={`flex items-center gap-3 rounded-2xl text-red-600 hover:bg-red-50 hover:text-red-700 transition-all cursor-pointer ${
+                        expandido ? 'px-3 py-2.5 w-full' : 'w-11 h-11 justify-center'
+                    }`}
+                >
+                    <LogOut className="w-5 h-5 shrink-0" />
+                    {expandido && (
+                        <span className="text-[11px] font-black tracking-wider uppercase">Cerrar sesión</span>
+                    )}
+                </button>
+            )}
         </aside>
     );
 }

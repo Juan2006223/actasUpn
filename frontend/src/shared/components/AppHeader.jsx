@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { IconMenu } from './ui/IconosMemorian';
 
 const ROLE_LABELS = {
     ADMIN: 'SUPERADMINISTRADOR',
@@ -16,7 +15,7 @@ const PERIODOS = [
     { id: '2026-1', codigo: '2026-1', nombre: 'Período Institucional 2026-1', estado: 'ACTIVO' },
 ];
 
-export default function AppHeader({ seccionActivaNombre, onToggleSidebar, onCerrarSesion, usuario }) {
+export default function AppHeader({ seccionActivaNombre, usuario }) {
     const [periodoId, setPeriodoId] = useState('2026-2');
     const actual = PERIODOS.find((p) => p.id === periodoId) || PERIODOS[0];
 
@@ -30,14 +29,6 @@ export default function AppHeader({ seccionActivaNombre, onToggleSidebar, onCerr
     return (
         <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-3.5 px-6 bg-white/80 backdrop-blur-md rounded-3xl border border-slate-100 shadow-2xs no-print">
             <div className="flex items-center gap-3">
-                <button
-                    onClick={onToggleSidebar}
-                    className="w-9 h-9 rounded-2xl bg-white border border-slate-200/70 flex items-center justify-center text-slate-600 hover:text-brand-blue hover:border-brand-blue/40 shadow-2xs transition-all cursor-pointer active:scale-95"
-                    aria-label="Expandir o contraer menú lateral"
-                    title="Alternar barra lateral"
-                >
-                    <IconMenu className="w-4 h-4" />
-                </button>
                 <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
                     <span className="text-slate-700">Memorian</span>
                     <span>&gt;</span>
@@ -89,16 +80,6 @@ export default function AppHeader({ seccionActivaNombre, onToggleSidebar, onCerr
                             </span>
                         </div>
                     </div>
-                )}
-
-                {onCerrarSesion && (
-                    <button
-                        onClick={onCerrarSesion}
-                        title="Cerrar sesión"
-                        className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition cursor-pointer"
-                    >
-                        Salir
-                    </button>
                 )}
             </div>
         </header>

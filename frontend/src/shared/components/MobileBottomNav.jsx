@@ -1,8 +1,9 @@
 import React from 'react';
+import { LogOut } from 'lucide-react';
 import { IconDocumentActas, IconCommunityAcuerdos, IconUsers } from './ui/IconosMemorian';
 import { ROLES_CREADORES_GRUPOS } from '../../features/auth/dominio/authModel';
 
-export default function MobileBottomNav({ currentPath, rolUsuario, onNavigate }) {
+export default function MobileBottomNav({ currentPath, rolUsuario, onNavigate, onCerrarSesion }) {
     const items = [
         { path: '/actas', label: 'Actas', icono: <IconDocumentActas className="w-5 h-5" />, visible: true },
         { path: '/grupos', label: 'Grupos', icono: <IconCommunityAcuerdos className="w-5 h-5" />, visible: ROLES_CREADORES_GRUPOS.includes(rolUsuario) },
@@ -11,7 +12,7 @@ export default function MobileBottomNav({ currentPath, rolUsuario, onNavigate })
 
     return (
         <div className="fixed bottom-5 left-0 right-0 z-40 px-4 flex justify-center pointer-events-none md:hidden no-print">
-            <nav className="pointer-events-auto bg-[#0e131f] border border-slate-800 shadow-2xl rounded-full p-2 max-w-[260px] w-full flex items-center justify-around backdrop-blur-xl">
+            <nav className="pointer-events-auto bg-[#0e131f] border border-slate-800 shadow-2xl rounded-full p-2 max-w-[310px] w-full flex items-center justify-around backdrop-blur-xl">
                 {items.map((item) => {
                     const activo = currentPath.startsWith(item.path);
                     return (
@@ -29,6 +30,18 @@ export default function MobileBottomNav({ currentPath, rolUsuario, onNavigate })
                         </button>
                     );
                 })}
+                {onCerrarSesion && (
+                    // En celular no hay barra lateral: cerrar sesión va aquí, en rojo, separado de la navegación.
+                    <button
+                        type="button"
+                        onClick={onCerrarSesion}
+                        aria-label="Cerrar sesión"
+                        title="Cerrar sesión"
+                        className="w-10 h-10 flex items-center justify-center rounded-full text-red-400 hover:text-red-300 border-l border-slate-700 cursor-pointer"
+                    >
+                        <LogOut className="w-5 h-5" />
+                    </button>
+                )}
             </nav>
         </div>
     );
