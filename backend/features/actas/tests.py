@@ -105,3 +105,38 @@ class TestActasDomainAndApp(unittest.TestCase):
     def test_firma_vacia_falla(self):
         with self.assertRaises(ValueError):
             self.firma_uc.registrar_firma(user_id=10, firma_data="  ")
+
+
+from django.contrib.auth import get_user_model
+from django.test import TestCase
+from rest_framework.test import APIClient
+
+
+class AutoguardadoApiTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username='docente1', password='x', role='TEACHER'
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(self.user)
+
+    def test_devuelve_updated_at_y_no_persiste_campos_de_interfaz(self):
+        res = self.client.post('/api/actas/reuniones/', {
+            'tipo': 'ACTA', 'borrador': True, 'isNew': True, 'updated_at': 'viejo',
+        }, format='json')
+        self.assertEqual(res.status_code, 201)
+        self.assertTrue(res.data['updated_at'])
+        self.assertNotIn('isNew', res.data)
+
+        from .infraestructura.models import ActaReunion
+        guardada = ActaReunion.objects.get(pk=res.data['id'])
+        self.assertNotIn('isNew', guardada.data)
+        self.assertNotIn('updated_at', guardada.data)
+        self.assertTrue(guardada.data['borrador'])
+
+        res2 = self.client.put(f"/api/actas/reuniones/{res.data['id']}/", {
+            **res.data, 'orden_dia': '1. Apertura', 'borrador': False,
+        }, format='json')
+        self.assertEqual(res2.status_code, 200)
+        self.assertEqual(res2.data['orden_dia'], '1. Apertura')
+        self.assertFalse(res2.data['borrador'])

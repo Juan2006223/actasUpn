@@ -10,7 +10,8 @@ class DjangoActasRepository(RepositorioActas):
             id=model.id,
             data=model.data or {},
             creador_id=model.creador_id,
-            participantes_ids=model.participantes_ids or []
+            participantes_ids=model.participantes_ids or [],
+            updated_at=model.updated_at,
         )
 
     def listar_por_usuario(self, user_id: int, es_admin: bool = False) -> List[ActaReunionEntidad]:

@@ -2,6 +2,7 @@ import React from 'react';
 import { Users } from 'lucide-react';
 import PeopleTable from './PeopleTable';
 import { StepResultados, StepFirmas } from './ActaFormSteps';
+import { anioDelActa, cambiarFechaActa } from '../../dominio/actaModel';
 
 const lbl = 'block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide';
 const inp = 'w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-ilinyx-400/20 focus:border-ilinyx-500 transition-all';
@@ -24,7 +25,7 @@ export function Sec({ num, title, hint, action, children }) {
     );
 }
 
-export function StepInfoGeneral({ acta, set, setRow, addRow, delRow, setImportTarget }) {
+export function StepInfoGeneral({ acta, set, setActa, setRow, addRow, delRow, setImportTarget }) {
     return (
         <>
             <Sec title="Encabezado">
@@ -41,7 +42,11 @@ export function StepInfoGeneral({ acta, set, setRow, addRow, delRow, setImportTa
                         </div>
                     </div>
                     <div><label className={lbl}>No. del Acta</label><input value={acta.numero} onChange={e => set('numero', e.target.value)} className={inp} placeholder="001" /></div>
-                    <div><label className={lbl}>Total de actas</label><input value={acta.total} onChange={e => set('total', e.target.value)} className={inp} placeholder="12" /></div>
+                    <div>
+                        <label className={lbl}>Año</label>
+                        <input value={anioDelActa(acta)} onChange={e => set('anio', e.target.value.replace(/\D/g, '').slice(0, 4))} inputMode="numeric" className={inp} placeholder={String(new Date().getFullYear())} />
+                        <p className="text-[11px] text-slate-400 mt-1">Se toma de la fecha del acta; puedes cambiarlo.</p>
+                    </div>
                 </div>
             </Sec>
             <Sec
@@ -58,7 +63,7 @@ export function StepInfoGeneral({ acta, set, setRow, addRow, delRow, setImportTa
                 }
             >
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div><label className={lbl}>Fecha *</label><input type="date" value={acta.fecha} onChange={e => set('fecha', e.target.value)} className={inp} /></div>
+                    <div><label className={lbl}>Fecha *</label><input type="date" value={acta.fecha} onChange={e => setActa(a => cambiarFechaActa(a, e.target.value))} className={inp} /></div>
                     <div><label className={lbl}>Hora inicio</label><input type="time" value={acta.hora_inicio} onChange={e => set('hora_inicio', e.target.value)} className={inp} /></div>
                     <div><label className={lbl}>Hora final</label><input type="time" value={acta.hora_final} onChange={e => set('hora_final', e.target.value)} className={inp} /></div>
                 </div>

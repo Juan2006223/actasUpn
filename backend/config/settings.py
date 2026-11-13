@@ -3,6 +3,14 @@ import os
 from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+
+try:
+    # Variables locales opcionales (claves de IA, etc.) en un archivo .env en la raíz del proyecto.
+    from dotenv import load_dotenv
+    load_dotenv(BASE_DIR / '.env')
+except ImportError:
+    pass
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'actas-secret-key-change-in-production-upn')
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
@@ -25,6 +33,7 @@ INSTALLED_APPS = [
     'features.usuarios.infraestructura.apps.UsuariosInfraConfig',
     'features.grupos.infraestructura.apps.GruposInfraConfig',
     'features.actas.infraestructura.apps.ActasInfraConfig',
+    'features.transcripcion.infraestructura.apps.TranscripcionInfraConfig',
 ]
 
 MIDDLEWARE = [
@@ -111,3 +120,34 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+MEDIA_ROOT = Path(os.environ.get('MEDIA_ROOT', BASE_DIR / 'media'))
+
+
+def _bool_env(nombre, defecto):
+    return os.environ.get(nombre, str(defecto)).strip().lower() in ('1', 'true', 'si', 'sí', 'yes')
+
+
+# Grabaciones de reuniones → transcripción → propuesta de acta.
+TRANSCRIPCION = {
+    # Whisper local: tiny | base | small | medium | large-v3-turbo (más grande = mejor y más lento).
+    'WHISPER_MODELO': os.environ.get('WHISPER_MODELO', 'small'),
+    'WHISPER_DISPOSITIVO': os.environ.get('WHISPER_DISPOSITIVO', 'cpu'),
+    'WHISPER_TIPO_COMPUTO': os.environ.get('WHISPER_TIPO_COMPUTO', 'int8'),
+    'WHISPER_HILOS': int(os.environ.get('WHISPER_HILOS', '0')),
+    'IDENTIFICAR_HABLANTES': _bool_env('IDENTIFICAR_HABLANTES', True),
+    'UMBRAL_HABLANTES': float(os.environ.get('UMBRAL_HABLANTES', '0.5')),
+    'CARPETA_MODELOS': Path(os.environ.get('CARPETA_MODELOS', BACKEND_DIR / 'modelos')),
+    # IA que redacta el acta: ollama (local y privado) | gemini | groq
+    'REDACTOR_IA': os.environ.get('REDACTOR_IA', 'ollama'),
+    'OLLAMA_URL': os.environ.get('OLLAMA_URL', 'http://localhost:11434'),
+    'OLLAMA_MODELO': os.environ.get('OLLAMA_MODELO', 'qwen2.5:7b'),
+    'OLLAMA_CONTEXTO': int(os.environ.get('OLLAMA_CONTEXTO', '12288')),
+    'GEMINI_API_KEY': os.environ.get('GEMINI_API_KEY', ''),
+    'GEMINI_MODELO': os.environ.get('GEMINI_MODELO', 'gemini-flash-latest'),
+    'GROQ_API_KEY': os.environ.get('GROQ_API_KEY', ''),
+    'GROQ_MODELO': os.environ.get('GROQ_MODELO', 'llama-3.3-70b-versatile'),
+    'AUDIO_MAX_MB': int(os.environ.get('AUDIO_MAX_MB', '2048')),
+    # Por privacidad y espacio, el audio se borra apenas se transcribe.
+    'CONSERVAR_AUDIO': _bool_env('CONSERVAR_AUDIO', False),
+    'TRABAJADOR_EN_SERVIDOR': _bool_env('TRANSCRIPCION_TRABAJADOR_EN_SERVIDOR', True),
+}

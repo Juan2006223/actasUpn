@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     calcularPendientesPorFirmar, extraerAniosDisponibles,
-    aplicarFirmaEnActa, agregarComentarioEnActa
+    aplicarFirmaEnActa, agregarComentarioEnActa, prepararActaParaGuardar
 } from '../dominio/actaModel';
 
 export function useActas(user, addToast, actasService) {
@@ -35,20 +35,30 @@ export function useActas(user, addToast, actasService) {
 
     const saveActa = async (acta) => {
         try {
+            const datos = prepararActaParaGuardar(acta);
+            let res;
             if (acta.id && !acta.isNew) {
-                await actasService.updateActa(acta.id, acta);
+                res = await actasService.updateActa(acta.id, datos);
                 addToast?.('Acta actualizada con éxito', 'success');
             } else {
-                await actasService.createActa(acta);
+                res = await actasService.createActa(datos);
                 addToast?.('Acta creada con éxito', 'success');
             }
             await loadActas();
-            return true;
+            return res?.data || true;
         } catch {
             addToast?.('Error al guardar el acta', 'error');
             return false;
         }
     };
+
+    // Guardado silencioso usado por el autoguardado: sin avisos ni recarga de la lista.
+    const autoguardarActa = useCallback(async (acta) => {
+        const res = acta.id
+            ? await actasService.updateActa(acta.id, acta)
+            : await actasService.createActa({ ...acta, borrador: true });
+        return res.data;
+    }, [actasService]);
 
     const deleteActa = async (id) => {
         try {
@@ -111,7 +121,7 @@ export function useActas(user, addToast, actasService) {
     return {
         actas, misActas, loading,
         firmaPersonal, setFirmaPersonal,
-        loadActas, saveActa, deleteActa,
+        loadActas, saveActa, autoguardarActa, deleteActa,
         firmarActa, guardarFirmaPersonal, comentar,
         pendingCount, availableYears,
     };

@@ -10,3 +10,8 @@ psycopg2-binary
 cloudinary
 django-cloudinary-storage
 openpyxl
+python-dotenv
+requests
+# Transcripción local de grabaciones e identificación de hablantes
+faster-whisper
+sherpa-onnx

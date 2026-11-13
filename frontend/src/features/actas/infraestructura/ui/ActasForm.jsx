@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Save, Eye, Printer } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Save, Eye, Printer, History } from 'lucide-react';
+import EstadoAutoguardado from './EstadoAutoguardado';
+import GrabacionPanel from './GrabacionPanel';
+import { formatoFecha } from './BorradoresPendientes';
 import CourseImportModal from './CourseImportModal';
 import { Sec, StepInfoGeneral, StepAgenda, StepResultados, StepFirmas } from './ActaFormStepGeneral';
 import {
@@ -11,7 +14,7 @@ import {
 
 const STEPS = ['Info. General', 'Agenda', 'Resultados', 'Firmas'];
 
-export default function ActasForm({ acta, step, setStep, user, onChange, onSave, onPreview, onBack, saving = false }) {
+export default function ActasForm({ acta, step, setStep, user, onChange, onSave, onPreview, onBack, saving = false, autoguardado, recuperadoEn, onDescartarRecuperado }) {
     const set = (field, val) => onChange(p => ({ ...p, [field]: val }));
     const setRow = (field, idx, key, val) => onChange(p => {
         const arr = [...p[field]]; arr[idx] = { ...arr[idx], [key]: val }; return { ...p, [field]: arr };
@@ -40,12 +43,27 @@ export default function ActasForm({ acta, step, setStep, user, onChange, onSave,
                 <div>
                     <h1 className="text-xl font-bold text-slate-800">Acta — {acta.tipo}</h1>
                     <p className="text-slate-400 text-xs">FOR023GDC · UPN · Los participantes buscan desde el directorio</p>
+                    {autoguardado && <div className="mt-1"><EstadoAutoguardado estado={autoguardado.estado} ultimoGuardado={autoguardado.ultimoGuardado} /></div>}
                 </div>
                 <div className="ml-auto flex gap-2">
                     <button onClick={onPreview} className="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-4 py-2 rounded-xl text-sm transition-all"><Eye className="h-4 w-4" /> Vista Previa</button>
                     <button onClick={onSave} disabled={saving} className="inline-flex items-center gap-2 bg-ilinyx-700 hover:bg-ilinyx-800 text-white font-semibold px-4 py-2 rounded-xl text-sm transition-all shadow-md disabled:opacity-60"><Save className="h-4 w-4" /> {saving ? 'Guardando…' : 'Guardar'}</button>
                 </div>
             </div>
+
+            {recuperadoEn && (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5">
+                    <p className="flex items-center gap-2 text-sm text-amber-800">
+                        <History className="h-4 w-4" />
+                        Se recuperaron cambios sin guardar ({formatoFecha(recuperadoEn)})
+                    </p>
+                    <button type="button" onClick={onDescartarRecuperado} className="text-xs font-bold text-amber-800 hover:underline cursor-pointer">
+                        Descartarlos y volver a la última versión guardada
+                    </button>
+                </div>
+            )}
+
+            <GrabacionPanel acta={acta} onChange={onChange} />
 
             <div className="flex items-center gap-2">
                 {STEPS.map((s, i) => (
@@ -62,7 +80,7 @@ export default function ActasForm({ acta, step, setStep, user, onChange, onSave,
             <AnimatePresence mode="wait">
                 <motion.div key={step} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}
                     className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-7">
-                    {step === 0 && <StepInfoGeneral acta={acta} set={set} setRow={setRow} addRow={addRow} delRow={delRow} setImportTarget={setImportTarget} />}
+                    {step === 0 && <StepInfoGeneral acta={acta} set={set} setActa={onChange} setRow={setRow} addRow={addRow} delRow={delRow} setImportTarget={setImportTarget} />}
                     {step === 1 && <StepAgenda acta={acta} set={set} />}
                     {step === 2 && <StepResultados acta={acta} set={set} setRow={setRow} addRow={addRow} delRow={delRow} Sec={Sec} />}
                     {step === 3 && <StepFirmas acta={acta} user={user} delRow={delRow} addMySig={addMySig} onImportFirmas={() => setImportTarget('firmas_import')} Sec={Sec} />}

@@ -16,11 +16,25 @@ guardar_acta_uc = GuardarActaUseCase(repo)
 eliminar_acta_uc = EliminarActaUseCase(repo)
 
 
+# Campos que calcula el servidor o que solo usa la interfaz: no se guardan dentro de data.
+CAMPOS_NO_PERSISTIBLES = ('id', 'creador_id', 'updated_at', 'isNew')
+
+
 def _serialize_entidad(acta):
-    d = dict(acta.data or {})
-    d.pop('id', None)
-    d.pop('creador_id', None)
-    return {'id': acta.id, **d, 'creador_id': acta.creador_id}
+    d = {k: v for k, v in (acta.data or {}).items() if k not in CAMPOS_NO_PERSISTIBLES}
+    return {
+        'id': acta.id,
+        **d,
+        'creador_id': acta.creador_id,
+        'updated_at': acta.updated_at.isoformat() if acta.updated_at else None,
+    }
+
+
+def _datos_entrada(request):
+    data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+    for campo in CAMPOS_NO_PERSISTIBLES:
+        data.pop(campo, None)
+    return data
 
 
 @api_view(['GET', 'POST'])
@@ -34,7 +48,7 @@ def reuniones_list(request):
     if not puede_crear_actas(user):
         return Response({'detail': 'No tienes permisos para crear actas.'}, status=403)
 
-    data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+    data = _datos_entrada(request)
     acta = guardar_acta_uc.ejecutar(data=data, creador_id=user.id, actor_id=user.id, es_admin=es_superadmin(user))
     return Response(_serialize_entidad(acta), status=201)
 
@@ -64,7 +78,7 @@ def reuniones_detail(request, pk):
             return Response({'detail': str(e)}, status=403)
 
     try:
-        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        data = _datos_entrada(request)
         acta_actualizada = guardar_acta_uc.ejecutar(
             data=data,
             creador_id=acta.creador_id,

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ChevronLeft, Download } from 'lucide-react';
-import { sincronizarFirmasConParticipantes } from '../../dominio/actaModel';
+import { sincronizarFirmasConParticipantes, anioParaImprimir } from '../../dominio/actaModel';
 import { actaPrintStyles, paginateActa } from './actaPrintStyles';
 
 const INLINE_ACTA_STYLE = `@media print{body *{visibility:hidden!important}.no-print{display:none!important}#print-acta,#print-acta *{visibility:visible!important}#print-acta{position:absolute;left:0;top:0;width:100%!important;max-width:none!important;box-shadow:none!important}@page{size:letter;margin:1.5cm}}#print-acta{font-family:Arial,sans-serif;letter-spacing:0}#print-acta table{border-collapse:collapse;width:100%;table-layout:fixed;border:1px solid #000}#print-acta>table{outline:1px solid #000;outline-offset:3px;margin:3px;width:calc(100% - 6px)}#print-acta td,#print-acta th{border:1px solid #000;padding:4px 6px;vertical-align:top;word-break:break-word}#print-acta .sec{background:#bfbfbf;font-weight:bold;padding:4px 6px;border:1px solid #000;margin-top:6px}#print-acta .sec+table{border-top:0}#print-acta .hdr{background:#bfbfbf;font-weight:bold}#print-acta .meta{font-weight:bold;text-align:center}.print-running-header{display:none}@media print{#print-acta{padding-top:0!important}.screen-header{display:none!important}.print-running-header{display:block;position:fixed;top:0;left:0;right:0;height:3.2cm;background:#fff;z-index:100}.print-running-header table{width:100%;margin:0!important;outline:none!important;border:1px solid #000!important}.print-running-header td{padding:3px 5px!important}.print-running-header .page-label::after{content:counter(page) " de " counter(pages)}@page{size:letter;margin:4cm 1.5cm 1.5cm}}`;
@@ -76,7 +76,7 @@ export function OfficialActa({ acta, compact = false }) {
             <table>
                 <colgroup><col style={{ width: '30%' }} /><col style={{ width: '22%' }} /><col style={{ width: '12%' }} /><col style={{ width: '12%' }} /><col style={{ width: '12%' }} /><col style={{ width: '12%' }} /></colgroup>
                 <tbody>
-                    <tr><td colSpan={6} className="text-center font-bold">Acta / Resumen de Reunión No. {acta.numero || '___'} de {acta.total || '___'}</td></tr>
+                    <tr><td colSpan={6} className="text-center font-bold">Acta / Resumen de Reunión No. {acta.numero || '___'} de {anioParaImprimir(acta) || '___'}</td></tr>
                     <tr><td colSpan={6} className="sec">1. Información General:</td></tr>
                     <tr>
                         <td style={{ width: '26%', background: '#bfbfbf' }}>Fecha</td>

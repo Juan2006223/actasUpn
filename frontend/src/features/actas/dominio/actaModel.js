@@ -11,9 +11,10 @@ export const ROLE_ES = {
 
 export const mkActa = () => ({
     isNew: true,
+    borrador: true,
     tipo: 'ACTA',
     numero: '',
-    total: '',
+    anio: '',
     fecha: '',
     hora_inicio: '',
     hora_final: '',
@@ -149,4 +150,84 @@ export function agregarComentarioEnActa(acta, autorNombre, texto) {
         { autor: autorNombre, texto, fecha: new Date().toISOString() }
     ];
     return { ...acta, comentarios };
+}
+
+// ── Autoguardado ──────────────────────────────────────────────
+
+const PREFIJO_BORRADOR = 'acta_borrador';
+
+/** Clave de localStorage del borrador de un usuario para una acta (o 'nueva' si aún no existe en el servidor). */
+export function claveBorrador(userId, actaId) {
+    return `${PREFIJO_BORRADOR}:${userId ?? 'anon'}:${actaId ?? 'nueva'}`;
+}
+
+export function esClaveBorradorDeUsuario(clave, userId) {
+    return typeof clave === 'string' && clave.startsWith(`${PREFIJO_BORRADOR}:${userId ?? 'anon'}:`);
+}
+
+/** Quita lo que solo usa la interfaz antes de enviar o comparar. */
+export function prepararActaParaGuardar(acta) {
+    const { isNew, updated_at, ...resto } = acta || {};
+    return resto;
+}
+
+/** Huella para detectar cambios reales (ignora campos que calcula el servidor). */
+export function huellaActa(acta) {
+    return JSON.stringify(prepararActaParaGuardar(acta));
+}
+
+const vacio = (v) => !v || String(v).trim() === '' || String(v).trim() === 'N/A';
+
+/** Evita crear borradores en el servidor por abrir y cerrar un formulario vacío. */
+export function actaTieneContenido(acta) {
+    if (!acta) return false;
+    if (acta.grabacion_id) return true;
+    const campos = ['numero', 'fecha', 'hora_inicio', 'hora_final', 'instancias', 'lugar', 'orden_dia', 'desarrollo'];
+    if (campos.some((c) => !vacio(acta[c]))) return true;
+    const filas = [...(acta.asistentes || []), ...(acta.ausentes || []), ...(acta.invitados || [])];
+    if (filas.some((p) => !vacio(p?.nombre))) return true;
+    return (acta.compromisos || []).some((c) => !vacio(c?.compromiso));
+}
+
+/** El borrador local sirve solo si es más nuevo que lo guardado en el servidor y tiene cambios. */
+export function borradorEsRecuperable(borrador, actaServidor) {
+    if (!borrador?.acta || !borrador.guardadoEn) return false;
+    if (!actaServidor) return actaTieneContenido(borrador.acta);
+    if (huellaActa(borrador.acta) === huellaActa(actaServidor)) return false;
+    if (!actaServidor.updated_at) return true;
+    return new Date(borrador.guardadoEn) > new Date(actaServidor.updated_at);
+}
+
+export function describirBorrador(acta) {
+    if (!acta) return 'Acta sin título';
+    const partes = [acta.numero ? `Acta ${acta.numero}` : acta.id ? `Acta #${acta.id}` : 'Acta nueva'];
+    if (acta.instancias) partes.push(acta.instancias);
+    if (acta.fecha) partes.push(acta.fecha);
+    return partes.join(' · ');
+}
+
+// ── Año del acta ("Acta No. # de Año") ─────────────────────────
+
+export function anioDeFecha(fecha) {
+    return /^\d{4}-\d{2}-\d{2}$/.test(fecha || '') ? fecha.slice(0, 4) : '';
+}
+
+/** Año a mostrar en el formulario. Las actas anteriores guardaban este dato en "total". */
+export function anioDelActa(acta) {
+    if (acta?.anio !== undefined) return acta.anio;
+    // Solo si parece un año: antes el campo se llamaba "Total de actas" y pudo llenarse con otra cosa.
+    const total = /^\d{4}$/.test(String(acta?.total || '').trim()) ? String(acta.total).trim() : '';
+    return total || anioDeFecha(acta?.fecha);
+}
+
+/** Año para imprimir: si quedó vacío, se usa el de la fecha. */
+export function anioParaImprimir(acta) {
+    return anioDelActa(acta) || anioDeFecha(acta?.fecha);
+}
+
+/** Al cambiar la fecha, el año la sigue, salvo que la persona lo haya escrito a mano con otro valor. */
+export function cambiarFechaActa(acta, fecha) {
+    const anioActual = anioDelActa(acta);
+    const automatico = !anioActual || anioActual === anioDeFecha(acta.fecha);
+    return { ...acta, fecha, anio: automatico ? (anioDeFecha(fecha) || anioActual) : anioActual };
 }

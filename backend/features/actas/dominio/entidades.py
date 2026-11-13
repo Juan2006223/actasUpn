@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Optional, List, Dict, Any
 
 
@@ -24,6 +25,7 @@ class ActaReunionEntidad:
     data: Dict[str, Any]
     creador_id: Optional[int]
     participantes_ids: List[int] = field(default_factory=list)
+    updated_at: Optional[datetime] = None
 
     def __post_init__(self):
         if not isinstance(self.data, dict):

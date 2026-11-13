@@ -6,4 +6,5 @@ urlpatterns = [
     path('api/', include('features.usuarios.infraestructura.urls')),
     path('api/grupos/', include('features.grupos.infraestructura.urls')),
     path('api/actas/', include('features.actas.infraestructura.urls')),
+    path('api/grabaciones/', include('features.transcripcion.infraestructura.urls')),
 ]

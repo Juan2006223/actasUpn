@@ -1,4 +1,5 @@
 # Variables de entorno y secretos (NUNCA subir)
+.claude
 .env
 .env.*
 !.env.example
@@ -25,6 +26,8 @@ env/
 ENV/
 staticfiles/
 media/
+# Modelos de IA descargados (transcripción, hablantes)
+backend/modelos/
 .pytest_cache/
 .coverage
 htmlcov/

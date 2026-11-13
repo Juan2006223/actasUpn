@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../../auth/aplicacion/AuthContext';
 import { useActas } from '../../aplicacion/useActas';
-import { mkActa, filtrarMisActas } from '../../dominio/actaModel';
+import { useAutoguardado, almacenBorradores } from '../../aplicacion/useAutoguardado';
+import { mkActa, filtrarMisActas, claveBorrador, borradorEsRecuperable } from '../../dominio/actaModel';
+import BorradoresPendientes from './BorradoresPendientes';
 import * as actasApi from '../api/actasApi';
+import { eliminarGrabacion } from '../api/grabacionesApi';
 import ToastContainer, { useToast } from '../../../../shared/components/ui/Toast';
 import ConfirmDialog, { useConfirm } from '../../../../shared/components/ui/ConfirmDialog';
 import SignaturePad from './SignaturePad';
@@ -22,12 +25,15 @@ export default function ActasPage() {
     const { dlg: confirmDlg, show: showConfirm, close: closeConfirm } = useConfirm();
     const {
         actas, misActas, loading, firmaPersonal, setFirmaPersonal,
-        saveActa, deleteActa, firmarActa, guardarFirmaPersonal, comentar, pendingCount, availableYears,
+        loadActas, saveActa, autoguardarActa, deleteActa, firmarActa, guardarFirmaPersonal, comentar, pendingCount, availableYears,
     } = useActas(user, addToast, actasApi);
 
     const [view, setView] = useState('list');
     const [prevView, setPrevView] = useState('list');
     const [current, setCurrent] = useState(null);
+    const [base, setBase] = useState(null);
+    const [recuperadoEn, setRecuperadoEn] = useState(null);
+    const [borradores, setBorradores] = useState([]);
     const [seleccionada, setSeleccionada] = useState(null);
     const [step, setStep] = useState(0);
     const [saving, setSaving] = useState(false);
@@ -43,25 +49,92 @@ export default function ActasPage() {
     useEffect(() => { if (isStudent && view === 'list') setView('mis'); }, [isStudent, view]);
     useEffect(() => { setPagina(1); }, [view, misFilter, misYear, misSearch, orden]);
 
-    const handleNew = () => { if (isStudent) return; setCurrent(mkActa()); setStep(0); setView('form'); };
+    const autoguardado = useAutoguardado({
+        acta: current,
+        base,
+        activo: view === 'form' && !!current && !isStudent,
+        userId: user?.id,
+        guardarEnServidor: autoguardarActa,
+        onActaCreada: (guardada) => setCurrent((p) => (p ? { ...p, id: guardada.id, isNew: false } : p)),
+    });
+
+    // Borradores que quedaron en este navegador (apagón, pestaña cerrada…) y que no llegaron al servidor.
+    useEffect(() => {
+        if (view === 'form' || loading || !user) return;
+        const servidor = [...actas, ...misActas];
+        const pendientes = almacenBorradores.listar(user.id).filter((b) => {
+            const enServidor = b.acta.id ? servidor.find((a) => a.id === b.acta.id) : null;
+            if (b.acta.id && !enServidor) return false;
+            return borradorEsRecuperable(b, enServidor);
+        });
+        setBorradores(pendientes);
+    }, [view, loading, actas, misActas, user]);
+
+    const abrirFormulario = (actaServidor) => {
+        const borrador = almacenBorradores.leer(claveBorrador(user?.id, actaServidor?.id));
+        const recuperable = borradorEsRecuperable(borrador, actaServidor);
+        const inicial = actaServidor ? { ...actaServidor, isNew: false } : mkActa();
+        setBase(actaServidor || null);
+        setCurrent(recuperable ? { ...inicial, ...borrador.acta, isNew: !actaServidor } : inicial);
+        setRecuperadoEn(recuperable ? borrador.guardadoEn : null);
+        setStep(0);
+        setView('form');
+    };
+    const descartarRecuperado = () => {
+        almacenBorradores.borrar(claveBorrador(user?.id, base?.id));
+        setCurrent(base ? { ...base, isNew: false } : mkActa());
+        setRecuperadoEn(null);
+    };
+    const continuarBorrador = (b) => {
+        const enServidor = b.acta.id ? [...actas, ...misActas].find((a) => a.id === b.acta.id) : null;
+        abrirFormulario(enServidor || null);
+    };
+    const descartarBorrador = (b) => {
+        almacenBorradores.borrar(b.clave);
+        setBorradores((lista) => lista.filter((x) => x.clave !== b.clave));
+    };
+
+    const handleNew = () => { if (isStudent) return; abrirFormulario(null); };
     const handleEdit = (a) => {
         if (isStudent) return;
         if (a.creador_id && String(a.creador_id) !== String(user?.id)) {
             addToast('Solo el creador puede editar', 'warning');
             return;
         }
-        setCurrent({ ...a, isNew: false }); setStep(0); setView('form');
+        abrirFormulario(a);
     };
     const handleView = (a) => { setCurrent({ ...a }); setPrevView(view); setView('preview'); };
     const handleDelete = (id) => {
         if (isStudent) return;
         showConfirm('Eliminar Acta', '¿Estás seguro? No se puede deshacer.', async () => {
             closeConfirm();
-            await deleteActa(id);
+            const grabacionId = [...actas, ...misActas].find((a) => a.id === id)?.grabacion_id;
+            const ok = await deleteActa(id);
+            if (ok) {
+                almacenBorradores.borrar(claveBorrador(user?.id, id));
+                // Sin acta, su grabación no sirve: se borra (o se cancela si se está procesando).
+                if (grabacionId) eliminarGrabacion(grabacionId).catch(() => {});
+            }
             if (seleccionada?.id === id) setSeleccionada(null);
         }, true);
     };
-    const handleSave = async () => { setSaving(true); const ok = await saveActa(current); setSaving(false); if (ok) setView('list'); };
+    const handleSave = async () => {
+        setSaving(true);
+        // Si el autoguardado ya creó el acta, se actualiza esa misma en vez de crear otra.
+        const idServidor = await autoguardado.detener();
+        const id = current.id ?? idServidor;
+        const guardada = await saveActa({ ...current, id, isNew: !id, borrador: false });
+        setSaving(false);
+        if (guardada) {
+            autoguardado.marcarGuardado(typeof guardada === 'object' ? guardada : null);
+            setView('list');
+        }
+    };
+    const handleBack = async () => {
+        await autoguardado.guardarAhora();
+        setView('list');
+        loadActas();
+    };
     const handleSign = (actaId) => firmaPersonal ? firmarActa(actaId, firmaPersonal) : setSigningActaId(actaId);
 
     const baseSource = view === 'list' ? actas : misActas;
@@ -88,7 +161,8 @@ export default function ActasPage() {
 
     if (view === 'preview' && current) return <ActasPrintView acta={current} onBack={() => setView(prevView)} />;
     if (view === 'form' && current && !isStudent) {
-        return <ActasForm acta={current} step={step} setStep={setStep} user={user} onChange={setCurrent} onSave={handleSave} saving={saving} onPreview={() => { setPrevView('form'); setView('preview'); }} onBack={() => setView('list')} />;
+        return <ActasForm acta={current} step={step} setStep={setStep} user={user} onChange={setCurrent} onSave={handleSave} saving={saving} onPreview={() => { setPrevView('form'); setView('preview'); }} onBack={handleBack}
+            autoguardado={autoguardado} recuperadoEn={recuperadoEn} onDescartarRecuperado={descartarRecuperado} />;
     }
 
     return (
@@ -100,6 +174,7 @@ export default function ActasPage() {
 
             <section className="space-y-6">
                 <ActasHeader isStudent={isStudent} onNewActa={handleNew} view={view} setView={setView} allActasCount={actas.length} myActasCount={misActas.length} firmadasCount={firmadasCount} participantesCount={participantesCount} pendingCount={pendingCount} firmaPersonal={firmaPersonal} onOpenGestionFirma={() => setShowGestionFirma(true)} />
+                {!isStudent && <BorradoresPendientes borradores={borradores} onContinuar={continuarBorrador} onDescartar={descartarBorrador} />}
                 <ActasFilters misFilter={misFilter} setMisFilter={setMisFilter} misYear={misYear} setMisYear={setMisYear} misSearch={misSearch} setMisSearch={setMisSearch} orden={orden} setOrden={setOrden} availableYears={availableYears} />
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -134,7 +209,9 @@ export default function ActasPage() {
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-xs font-black text-slate-900 truncate">{a.numero ? `Acta ${a.numero}` : `Acta #${a.id}`}</span>
                                                             <span className="text-[9px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-extrabold">{a.tipo || 'Regular'}</span>
-                                                            <span className="text-[9px] px-2 py-0.5 rounded-full font-black border bg-[#D1FAE5] text-[#065F46] border-[#A7F3D0]">Activo</span>
+                                                            {a.borrador
+                                                                ? <span className="text-[9px] px-2 py-0.5 rounded-full font-black border bg-amber-50 text-amber-700 border-amber-200">Borrador</span>
+                                                                : <span className="text-[9px] px-2 py-0.5 rounded-full font-black border bg-[#D1FAE5] text-[#065F46] border-[#A7F3D0]">Activo</span>}
                                                         </div>
                                                         <p className="text-[11px] font-bold text-slate-400 mt-0.5 truncate">Salón / Lugar {a.lugar || 'UPN'} · Código {a.numero || '01'} · {a.instancias || 'FOR023GDC'}</p>
                                                     </div>
