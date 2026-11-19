@@ -34,7 +34,8 @@ export default function UsuariosTabla({
                             <th className="py-3.5 px-3 w-10" aria-label="Seleccionar usuario" />
                             <th className="py-3.5 px-4">Usuario</th>
                             <th className="py-3.5 px-4">Correo Institucional</th>
-                            <th className="py-3.5 px-4">Rol en Sistema</th>
+                            <th className="py-3.5 px-4">Cargo / Dependencia</th>
+                            <th className="py-3.5 px-4">Rol en la plataforma</th>
                             <th className="py-3.5 px-4">Estado Acceso</th>
                             <th className="py-3.5 px-4 text-right">Acciones de Seguridad</th>
                         </tr>
@@ -79,17 +80,22 @@ export default function UsuariosTabla({
                                                 <p className="font-bold text-slate-800 leading-tight">
                                                     {nombreCompleto}
                                                 </p>
-                                                {u.role !== 'ADMIN' && (
-                                                    <span className="text-[9px] text-slate-400 font-medium block">
-                                                        {cfg.subtitulo}
-                                                    </span>
-                                                )}
+                                                <span className="text-[9px] text-slate-400 font-medium block">
+                                                    {u.username}
+                                                </span>
                                             </div>
                                         </div>
                                     </td>
 
                                     <td className="py-3.5 px-4 text-slate-600 font-medium">
                                         {u.email || 'Sin correo registrado'}
+                                    </td>
+
+                                    <td className="py-3.5 px-4 text-slate-600 font-medium">
+                                        {u.cargo || <span className="text-amber-600">Sin cargo</span>}
+                                        <span className="block text-[10px] text-slate-400">
+                                            {u.dependencia_nombre || 'Sin dependencia'}
+                                        </span>
                                     </td>
 
                                     <td className="py-3.5 px-4">
@@ -118,10 +124,10 @@ export default function UsuariosTabla({
                                                 disabled={bloqueado}
                                                 onClick={() => onEditarRol(u)}
                                                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-brand-blue bg-blue-50/70 hover:bg-brand-blue hover:text-white disabled:opacity-40 rounded-xl transition cursor-pointer"
-                                                title="Cambiar permisos y rol de acceso"
+                                                title="Cambiar rol, cargo y dependencia"
                                             >
                                                 <IconShieldCheck className="w-3.5 h-3.5" />
-                                                <span>Editar Rol</span>
+                                                <span>Editar</span>
                                             </button>
 
                                             <button

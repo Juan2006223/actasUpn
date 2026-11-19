@@ -10,7 +10,8 @@ class DjangoGruposRepository(RepositorioGrupos):
     def _cargar_usuarios_activos(self) -> List[Dict[str, Any]]:
         User = get_user_model()
         return list(User.objects.filter(is_active=True).values(
-            'id', 'username', 'first_name', 'last_name', 'email', 'role', 'document_number'
+            'id', 'username', 'first_name', 'last_name', 'email', 'role', 'document_number',
+            'cargo', 'dependencia__nombre',
         ))
 
     def _to_entity(self, model: Grupo, usuarios: Optional[List[Dict[str, Any]]] = None) -> GrupoEntidad:
@@ -60,10 +61,8 @@ class DjangoGruposRepository(RepositorioGrupos):
         return deleted > 0
 
     def listar_estudiantes_activos(self) -> List[Dict[str, Any]]:
-        return [
-            u for u in self._cargar_usuarios_activos()
-            if u.get('role') == 'STUDENT'
-        ]
+        # Ya no existe un rol de estudiante: un grupo sin integrantes queda vacío.
+        return []
 
     def _resolver_integrantes(
         self,
@@ -88,7 +87,9 @@ class DjangoGruposRepository(RepositorioGrupos):
                 'last_name': u.get('last_name') or '',
                 'full_name': nombre,
                 'email': u.get('email') or '',
-                'role': u.get('role') or 'ASISTENTE',
+                'role': u.get('role') or 'REDACTOR',
+                'cargo': u.get('cargo') or '',
+                'dependencia': u.get('dependencia__nombre') or '',
                 'document_number': u.get('document_number') or '',
             })
 
@@ -99,12 +100,12 @@ class DjangoGruposRepository(RepositorioGrupos):
             token = item.strip()
             if not token:
                 continue
-            raw_role = 'ASISTENTE'
+            raw_cargo = ''
             raw_name = token
             if '(' in token and token.endswith(')'):
                 idx = token.rfind('(')
                 raw_name = token[:idx].strip()
-                raw_role = token[idx + 1:-1].strip() or 'ASISTENTE'
+                raw_cargo = token[idx + 1:-1].strip()
             if not raw_name:
                 continue
             target_low = raw_name.lower()
@@ -129,13 +130,13 @@ class DjangoGruposRepository(RepositorioGrupos):
                     'last_name': '',
                     'full_name': raw_name,
                     'email': '',
-                    'role': raw_role,
+                    'role': 'REDACTOR',
+                    'cargo': raw_cargo,
+                    'dependencia': '',
                     'document_number': '',
                 })
 
-        if integrantes:
-            return integrantes
-        return [u for u in catalogo if u.get('role') == 'STUDENT']
+        return integrantes
 
     def obtener_integrantes_grupo(self, grupo: GrupoEntidad) -> List[Dict[str, Any]]:
         return grupo.integrantes if grupo.integrantes else self._resolver_integrantes(grupo)

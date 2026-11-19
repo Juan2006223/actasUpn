@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List
-from .entidades import UsuarioEntidad
+from .entidades import UsuarioEntidad, DependenciaEntidad
 
 class RepositorioUsuarios(ABC):
     @abstractmethod
@@ -21,4 +21,26 @@ class RepositorioUsuarios(ABC):
 
     @abstractmethod
     def guardar(self, usuario: UsuarioEntidad, password: Optional[str] = None) -> UsuarioEntidad:
+        pass
+
+
+class RepositorioDependencias(ABC):
+    @abstractmethod
+    def listar(self, solo_activas: bool = False) -> List[DependenciaEntidad]:
+        pass
+
+    @abstractmethod
+    def obtener(self, dependencia_id: int) -> Optional[DependenciaEntidad]:
+        pass
+
+    @abstractmethod
+    def obtener_por_nombre(self, nombre: str) -> Optional[DependenciaEntidad]:
+        pass
+
+    @abstractmethod
+    def guardar(self, dependencia: DependenciaEntidad) -> DependenciaEntidad:
+        pass
+
+    @abstractmethod
+    def eliminar(self, dependencia_id: int) -> bool:
         pass

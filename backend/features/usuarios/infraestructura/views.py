@@ -5,7 +5,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from shared.dominio import es_superadmin, puede_gestionar_grupos
 from .serializers import UserSerializer
-from .repositorios import DjangoUsuariosRepository
+from .repositorios import DjangoUsuariosRepository, DjangoDependenciasRepository
 from ..aplicacion.casos_uso import (
     BuscarUsuariosUseCase,
     ListarUsuariosUseCase,
@@ -13,6 +13,8 @@ from ..aplicacion.casos_uso import (
     AlternarEstadoUsuarioUseCase,
     CrearUsuarioInstitucionalUseCase,
     ImportarUsuariosMasivoUseCase,
+    ActualizarPerfilUsuarioUseCase,
+    GestionarDependenciasUseCase,
 )
 
 repo_usuarios = DjangoUsuariosRepository()
@@ -20,8 +22,11 @@ buscar_usuarios_uc = BuscarUsuariosUseCase(repo_usuarios)
 listar_usuarios_uc = ListarUsuariosUseCase(repo_usuarios)
 cambiar_rol_uc = CambiarRolUsuarioUseCase(repo_usuarios)
 alternar_estado_uc = AlternarEstadoUsuarioUseCase(repo_usuarios)
-crear_usuario_uc = CrearUsuarioInstitucionalUseCase(repo_usuarios)
-importar_masivo_uc = ImportarUsuariosMasivoUseCase(repo_usuarios)
+repo_dependencias = DjangoDependenciasRepository()
+crear_usuario_uc = CrearUsuarioInstitucionalUseCase(repo_usuarios, repo_dependencias)
+importar_masivo_uc = ImportarUsuariosMasivoUseCase(repo_usuarios, repo_dependencias)
+actualizar_perfil_uc = ActualizarPerfilUsuarioUseCase(repo_usuarios, repo_dependencias)
+dependencias_uc = GestionarDependenciasUseCase(repo_dependencias)
 
 _es_superadmin = es_superadmin
 _puede_convocar_grupos = puede_gestionar_grupos
@@ -35,6 +40,9 @@ def _serialize_usuario(entidad):
         'last_name': entidad.last_name,
         'full_name': entidad.full_name,
         'role': entidad.role,
+        'cargo': entidad.cargo,
+        'dependencia_id': entidad.dependencia_id,
+        'dependencia_nombre': entidad.dependencia_nombre,
         'document_number': entidad.document_number,
         'photo': entidad.photo,
         'is_active': entidad.is_active,
@@ -71,7 +79,7 @@ def me_view(request):
 def search_users_view(request):
     if not _puede_convocar_grupos(request.user):
         return Response(
-            {'detail': 'Solo Supervisores, Coordinadores, Docentes y Superadmin pueden convocar usuarios a grupos de acta.'},
+            {'detail': 'No tienes permisos para convocar usuarios.'},
             status=status.HTTP_403_FORBIDDEN,
         )
     q = request.query_params.get('q', '').strip()
@@ -96,8 +104,10 @@ def usuarios_collection_view(request):
             email=request.data.get('email', ''),
             first_name=request.data.get('first_name', ''),
             last_name=request.data.get('last_name', ''),
-            role=request.data.get('role', 'TEACHER'),
+            role=request.data.get('role') or 'REDACTOR',
             password=request.data.get('password') or None,
+            cargo=request.data.get('cargo', ''),
+            dependencia_id=request.data.get('dependencia_id'),
         )
         return Response(_serialize_usuario(creado), status=status.HTTP_201_CREATED)
     except ValueError as err:
@@ -135,3 +145,54 @@ def importar_usuarios_view(request):
         return Response({'detail': 'Formato de registros invalido'}, status=status.HTTP_400_BAD_REQUEST)
     resultado = importar_masivo_uc.ejecutar(registros)
     return Response(resultado)
+
+
+@api_view(['PATCH'])
+@permission_classes([permissions.IsAuthenticated])
+def actualizar_usuario_view(request, pk: int):
+    if not _es_superadmin(request.user):
+        return Response({'detail': 'Permiso denegado.'}, status=status.HTTP_403_FORBIDDEN)
+    campos = ('role', 'cargo', 'dependencia_id', 'first_name', 'last_name')
+    datos = {k: request.data.get(k) for k in campos if k in request.data}
+    try:
+        actualizado = actualizar_perfil_uc.ejecutar(pk, datos, actor_id=request.user.id)
+        return Response(_serialize_usuario(actualizado))
+    except ValueError as err:
+        return Response({'detail': str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+def _serialize_dependencia(d):
+    return {'id': d.id, 'nombre': d.nombre, 'activa': d.activa, 'num_usuarios': d.num_usuarios}
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([permissions.IsAuthenticated])
+def dependencias_view(request):
+    if request.method == 'GET':
+        # Todos ven las activas (para mostrar cargos en actas); el superadmin ve también las inactivas.
+        solo_activas = not _es_superadmin(request.user)
+        return Response([_serialize_dependencia(d) for d in dependencias_uc.listar(solo_activas=solo_activas)])
+    if not _es_superadmin(request.user):
+        return Response({'detail': 'Solo el Superadministrador gestiona dependencias.'}, status=status.HTTP_403_FORBIDDEN)
+    try:
+        creada = dependencias_uc.crear(request.data.get('nombre', ''))
+        return Response(_serialize_dependencia(creada), status=status.HTTP_201_CREATED)
+    except ValueError as err:
+        return Response({'detail': str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['PATCH', 'DELETE'])
+@permission_classes([permissions.IsAuthenticated])
+def dependencia_detalle_view(request, pk: int):
+    if not _es_superadmin(request.user):
+        return Response({'detail': 'Solo el Superadministrador gestiona dependencias.'}, status=status.HTTP_403_FORBIDDEN)
+    try:
+        if request.method == 'DELETE':
+            dependencias_uc.eliminar(pk)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        datos = {k: request.data.get(k) for k in ('nombre', 'activa') if k in request.data}
+        return Response(_serialize_dependencia(dependencias_uc.actualizar(pk, datos)))
+    except LookupError as err:
+        return Response({'detail': str(err)}, status=status.HTTP_404_NOT_FOUND)
+    except ValueError as err:
+        return Response({'detail': str(err)}, status=status.HTTP_400_BAD_REQUEST)

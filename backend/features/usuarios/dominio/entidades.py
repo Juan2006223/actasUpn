@@ -29,8 +29,26 @@ class UsuarioEntidad:
     document_number: Optional[str] = None
     photo: Optional[str] = None
     is_active: bool = True
+    cargo: str = ''
+    dependencia_id: Optional[int] = None
+    dependencia_nombre: str = ''
 
     @property
     def full_name(self) -> str:
         nombre = f"{self.first_name} {self.last_name}".strip()
         return nombre or self.username
+
+
+@dataclass
+class DependenciaEntidad:
+    id: Optional[int]
+    nombre: str
+    activa: bool = True
+    num_usuarios: int = 0
+
+    def __post_init__(self):
+        self.nombre = ' '.join(str(self.nombre or '').split())
+        if not self.nombre:
+            raise ValueError('El nombre de la dependencia es obligatorio.')
+        if len(self.nombre) > 150:
+            raise ValueError('El nombre de la dependencia es demasiado largo.')

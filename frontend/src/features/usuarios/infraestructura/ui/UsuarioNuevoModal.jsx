@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import { IconBrandMemorian, IconIdCard, IconMail } from '../../../../shared/components/ui/IconosMemorian';
+import { ROLES_DISPONIBLES, ROL_POR_DEFECTO } from '../../dominio/usuarioModel';
+import CamposCargoDependencia from './CamposCargoDependencia';
 
-export default function UsuarioNuevoModal({ abierto, onCerrar, onCrearUsuario }) {
+export default function UsuarioNuevoModal({ abierto, dependencias = [], onCerrar, onCrearUsuario }) {
     const [cedula, setCedula] = useState('');
     const [email, setEmail] = useState('');
     const [nombres, setNombres] = useState('');
     const [apellidos, setApellidos] = useState('');
-    const [rol, setRol] = useState('TEACHER');
+    const [rol, setRol] = useState(ROL_POR_DEFECTO);
+    const [cargo, setCargo] = useState('');
+    const [dependenciaId, setDependenciaId] = useState('');
     const [cargando, setCargando] = useState(false);
     const [mensaje, setMensaje] = useState(null);
 
@@ -22,6 +26,8 @@ export default function UsuarioNuevoModal({ abierto, onCerrar, onCrearUsuario })
             first_name: nombres.trim(),
             last_name: apellidos.trim(),
             role: rol,
+            cargo: cargo.trim(),
+            dependencia_id: dependenciaId ? Number(dependenciaId) : null,
         });
         setCargando(false);
         if (resp.ok) {
@@ -33,6 +39,7 @@ export default function UsuarioNuevoModal({ abierto, onCerrar, onCrearUsuario })
             setEmail('');
             setNombres('');
             setApellidos('');
+            setCargo('');
         } else {
             setMensaje({ tipo: 'error', texto: resp.error });
         }
@@ -135,21 +142,22 @@ export default function UsuarioNuevoModal({ abierto, onCerrar, onCrearUsuario })
                             </div>
                         </div>
 
+                        <CamposCargoDependencia cargo={cargo} onCargo={setCargo} dependenciaId={dependenciaId}
+                            onDependencia={setDependenciaId} dependencias={dependencias} />
+
                         <div>
-                            <label className="text-[11px] font-bold text-slate-700 block mb-1">Perfil Institucional</label>
+                            <label htmlFor="nuevo-rol" className="text-[11px] font-bold text-slate-700 block mb-1">Rol en la plataforma</label>
                             <select
+                                id="nuevo-rol"
                                 value={rol}
                                 onChange={(e) => setRol(e.target.value)}
                                 className="w-full px-3.5 py-2.5 text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-xl focus:border-brand-blue outline-none"
                             >
-                                <option value="TEACHER">Docente / Asesor Institucional</option>
-                                <option value="SUPERVISOR">Supervisor Institucional / de Procesos</option>
-                                <option value="COORDINADOR">Coordinador Académico / Administrativo</option>
-                                <option value="APOYO">Profesional de Apoyo a la Gestión</option>
-                                <option value="ASISTENTE">Asistente Administrativo / Secretaría de Actas</option>
-                                <option value="ADMIN">Administrador del Sistema</option>
-                                <option value="STUDENT">Estudiante / Participante de Sesión</option>
+                                {ROLES_DISPONIBLES.map((r) => (
+                                    <option key={r.id} value={r.id}>{r.nombre} — {r.subtitulo}</option>
+                                ))}
                             </select>
+                            <p className="text-[10px] text-slate-400 mt-1">{ROLES_DISPONIBLES.find((r) => r.id === rol)?.permisos[0]}</p>
                         </div>
 
                         <button

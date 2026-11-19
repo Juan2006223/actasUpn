@@ -1,4 +1,7 @@
-export const ROLES_CREADORES_GRUPOS = ['ADMIN', 'SUPERVISOR', 'COORDINADOR', 'TEACHER'];
+// Roles de la plataforma (el cargo institucional va aparte, en user.cargo).
+export const ROLES_PLATAFORMA = ['ADMIN', 'REVISOR', 'REDACTOR'];
+export const ROLES_CREADORES_GRUPOS = ROLES_PLATAFORMA;
+export const ETIQUETA_ROL = { ADMIN: 'Superadministrador', REVISOR: 'Revisor', REDACTOR: 'Redactor' };
 
 export function validarCredenciales(username, password) {
     const u = String(username || '').trim();
@@ -9,8 +12,8 @@ export function validarCredenciales(username, password) {
     return { username: u, password: p };
 }
 
-export function esEstudiante(user) {
-    return user?.role === 'STUDENT';
+export function esRevisor(user) {
+    return user?.role === 'REVISOR';
 }
 
 export function esAdmin(user) {

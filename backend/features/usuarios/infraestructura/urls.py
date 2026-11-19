@@ -8,6 +8,9 @@ from .views import (
     cambiar_rol_view,
     alternar_estado_view,
     importar_usuarios_view,
+    actualizar_usuario_view,
+    dependencias_view,
+    dependencia_detalle_view,
 )
 
 urlpatterns = [
@@ -19,5 +22,8 @@ urlpatterns = [
     path('usuarios/buscar/', search_users_view, name='usuarios-buscar'),
     path('usuarios/importar/', importar_usuarios_view, name='usuarios-importar'),
     path('usuarios/<int:pk>/rol/', cambiar_rol_view, name='usuarios-cambiar-rol'),
+    path('usuarios/<int:pk>/', actualizar_usuario_view, name='usuarios-actualizar'),
+    path('dependencias/', dependencias_view, name='dependencias'),
+    path('dependencias/<int:pk>/', dependencia_detalle_view, name='dependencia-detalle'),
     path('usuarios/<int:pk>/estado/', alternar_estado_view, name='usuarios-alternar-estado'),
 ]

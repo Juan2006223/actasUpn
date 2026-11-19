@@ -1,7 +1,10 @@
 import unittest
-from .dominio.entidades import EmailInstitucional, DocumentoIdentidad, UsuarioEntidad
-from .dominio.puertos import RepositorioUsuarios
+from .dominio.entidades import EmailInstitucional, DocumentoIdentidad, UsuarioEntidad, DependenciaEntidad
+from .dominio.puertos import RepositorioUsuarios, RepositorioDependencias
 from .aplicacion.casos_uso import (
+    ActualizarPerfilUsuarioUseCase,
+    GestionarDependenciasUseCase,
+    ImportarUsuariosMasivoUseCase,
     BuscarUsuariosUseCase,
     CambiarRolUsuarioUseCase,
     AlternarEstadoUsuarioUseCase,
@@ -46,6 +49,29 @@ class InMemoryUsuarioRepo(RepositorioUsuarios):
             self.usuarios.append(usuario)
         return usuario
 
+class InMemoryDependenciaRepo(RepositorioDependencias):
+    def __init__(self):
+        self.deps = {}
+
+    def listar(self, solo_activas=False):
+        return [d for d in self.deps.values() if d.activa or not solo_activas]
+
+    def obtener(self, dependencia_id):
+        return self.deps.get(dependencia_id)
+
+    def obtener_por_nombre(self, nombre):
+        return next((d for d in self.deps.values() if d.nombre.lower() == nombre.strip().lower()), None)
+
+    def guardar(self, dep):
+        if dep.id is None:
+            dep.id = len(self.deps) + 1
+        self.deps[dep.id] = dep
+        return dep
+
+    def eliminar(self, dependencia_id):
+        return self.deps.pop(dependencia_id, None) is not None
+
+
 class TestUsuariosDomainAndApp(unittest.TestCase):
     def setUp(self):
         self.repo = InMemoryUsuarioRepo()
@@ -55,7 +81,7 @@ class TestUsuariosDomainAndApp(unittest.TestCase):
         self.crear_uc = CrearUsuarioInstitucionalUseCase(self.repo)
         self.u1 = self.repo.guardar(UsuarioEntidad(
             id=None, username="jdoe", email="jdoe@upn.edu.co",
-            first_name="Juan", last_name="Perez", role="TEACHER", document_number="102030"
+            first_name="Juan", last_name="Perez", role="REDACTOR", document_number="102030"
         ))
 
     def test_value_objects_validos_e_invalidos(self):
@@ -88,12 +114,61 @@ class TestUsuariosDomainAndApp(unittest.TestCase):
             email="nuevo@upn.edu.co",
             first_name="Maria",
             last_name="Gomez",
-            role="TEACHER",
+            role="REDACTOR",
         )
         self.assertEqual(nuevo.username, "nuevo")
-        self.assertEqual(nuevo.role, "TEACHER")
+        self.assertEqual(nuevo.role, "REDACTOR")
         with self.assertRaises(ValueError):
             self.crear_uc.ejecutar(document_number="8090100", email="otro@upn.edu.co")
+
+    def test_roles_viejos_ya_no_son_validos(self):
+        with self.assertRaises(ValueError):
+            self.cambiar_rol_uc.ejecutar(self.u1.id, "TEACHER")
+
+
+class TestCargoYDependencia(unittest.TestCase):
+    def setUp(self):
+        self.repo = InMemoryUsuarioRepo()
+        self.deps = InMemoryDependenciaRepo()
+        self.gestion = GestionarDependenciasUseCase(self.deps)
+        self.cinndet = self.gestion.crear('  CINNDET ')
+
+    def test_dependencias_sin_duplicados_y_no_se_borran_con_usuarios(self):
+        self.assertEqual(self.cinndet.nombre, 'CINNDET')
+        with self.assertRaises(ValueError):
+            self.gestion.crear('cinndet')
+        with self.assertRaises(ValueError):
+            DependenciaEntidad(id=None, nombre='   ')
+        self.cinndet.num_usuarios = 2
+        with self.assertRaises(ValueError):
+            self.gestion.eliminar(self.cinndet.id)
+        self.assertFalse(self.gestion.actualizar(self.cinndet.id, {'activa': False}).activa)
+
+    def test_crear_con_cargo_y_dependencia(self):
+        crear = CrearUsuarioInstitucionalUseCase(self.repo, self.deps)
+        u = crear.ejecutar('123', 'carlos@upn.edu.co', 'Carlos', 'Merchán', 'REVISOR', cargo=' Director ',
+                           dependencia_id=self.cinndet.id)
+        self.assertEqual((u.role, u.cargo, u.dependencia_id), ('REVISOR', 'Director', self.cinndet.id))
+        with self.assertRaises(ValueError):
+            crear.ejecutar('456', 'x@upn.edu.co', dependencia_id=999)
+
+    def test_actualizar_perfil_y_no_cambiar_su_propio_rol(self):
+        u = CrearUsuarioInstitucionalUseCase(self.repo, self.deps).ejecutar('123', 'a@upn.edu.co')
+        perfil = ActualizarPerfilUsuarioUseCase(self.repo, self.deps)
+        actualizado = perfil.ejecutar(u.id, {'cargo': 'Diseñador', 'dependencia_id': self.cinndet.id})
+        self.assertEqual((actualizado.cargo, actualizado.dependencia_id), ('Diseñador', self.cinndet.id))
+        self.assertIsNone(perfil.ejecutar(u.id, {'dependencia_id': ''}).dependencia_id)
+        with self.assertRaises(ValueError):
+            perfil.ejecutar(u.id, {'role': 'ADMIN'}, actor_id=u.id)
+
+    def test_carga_masiva_crea_la_dependencia_por_nombre(self):
+        res = ImportarUsuariosMasivoUseCase(self.repo, self.deps).ejecutar([
+            {'document_number': '1', 'email': 'a@upn.edu.co', 'cargo': 'Docente', 'dependencia': 'Facultad de Ciencias'},
+            {'document_number': '2', 'email': 'b@upn.edu.co', 'dependencia': 'cinndet'},
+        ])
+        self.assertEqual(res['exitosos'], 2)
+        self.assertIsNotNone(self.deps.obtener_por_nombre('Facultad de Ciencias'))
+        self.assertEqual(self.repo.usuarios[1].dependencia_id, self.cinndet.id)
 
 
 from django.contrib.auth import get_user_model  # noqa: E402
@@ -104,7 +179,7 @@ from rest_framework_simplejwt.tokens import RefreshToken  # noqa: E402
 
 class RenovarSesionApiTests(TestCase):
     def test_renueva_la_sesion_con_el_token_de_renovacion(self):
-        user = get_user_model().objects.create_user(username='doc', password='x', role='TEACHER')
+        user = get_user_model().objects.create_user(username='doc', password='x', role='REDACTOR')
         refresh = RefreshToken.for_user(user)
         client = APIClient()
         r = client.post('/api/auth/refresh/', {'refresh': str(refresh)}, format='json')

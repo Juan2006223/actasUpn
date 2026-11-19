@@ -10,6 +10,7 @@ import InvitacionesTabla from './InvitacionesTabla';
 import UsuarioRolModal from './UsuarioRolModal';
 import UsuarioNuevoModal from './UsuarioNuevoModal';
 import UsuarioCargaMasivaModal from './UsuarioCargaMasivaModal';
+import DependenciasPanel from './DependenciasPanel';
 
 export default function UsuariosPage() {
     const { user } = useAuth();
@@ -24,7 +25,11 @@ export default function UsuariosPage() {
         rolFiltro,
         setRolFiltro,
         procesandoId,
-        cambiarRol,
+        actualizarPerfil,
+        dependencias,
+        crearDependencia,
+        actualizarDependencia,
+        eliminarDependencia,
         alternarEstado,
         crearUsuario,
         importarMasivo,
@@ -47,8 +52,8 @@ export default function UsuariosPage() {
     const pendientes = todosLosUsuarios.filter((u) => u.is_active === false);
     const metricas = [
         { label: 'Total Usuarios', valor: resumenRoles.total, color: 'text-slate-800' },
-        { label: 'Administradores', valor: resumenRoles.admins, color: 'text-purple-700' },
-        { label: 'Docentes Activos', valor: resumenRoles.docentes, color: 'text-emerald-700' },
+        { label: 'Redactores', valor: resumenRoles.redactores, color: 'text-emerald-700' },
+        { label: 'Revisores', valor: resumenRoles.revisores, color: 'text-purple-700' },
         { label: 'Invitaciones Pendientes', valor: resumenRoles.pendientesInvitaciones, color: 'text-amber-600' },
     ];
 
@@ -116,6 +121,15 @@ export default function UsuariosPage() {
                         {pendientes.length}
                     </span>
                 </button>
+                <button
+                    type="button"
+                    onClick={() => setPestanaActiva('dependencias')}
+                    className={`px-4 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
+                        pestanaActiva === 'dependencias' ? 'bg-brand-blue text-white shadow-2xs' : 'text-slate-500 hover:bg-slate-100'
+                    }`}
+                >
+                    Dependencias ({dependencias.length})
+                </button>
             </div>
 
             {error && (
@@ -148,7 +162,7 @@ export default function UsuariosPage() {
                             }}
                             className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-brand-blue shadow-2xs transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-slate-400 cursor-pointer"
                         >
-                            Asignar facultades y vinculación
+                            Editar usuario seleccionado
                         </button>
                     </div>
                     <UsuarioFiltrosBar busqueda={busqueda} onBusquedaChange={setBusqueda} rolFiltro={rolFiltro} onRolFiltroChange={setRolFiltro} />
@@ -162,12 +176,17 @@ export default function UsuariosPage() {
                         onToggleSeleccion={toggleSeleccion}
                     />
                 </>
+            ) : pestanaActiva === 'dependencias' ? (
+                <DependenciasPanel dependencias={dependencias} onCrear={crearDependencia}
+                    onActualizar={actualizarDependencia} onEliminar={eliminarDependencia} />
             ) : (
                 <InvitacionesTabla invitaciones={pendientes} />
             )}
 
-            <UsuarioRolModal usuario={usuarioModalRol} procesando={procesandoId === usuarioModalRol?.id} onCerrar={() => setUsuarioModalRol(null)} onConfirmar={cambiarRol} />
-            <UsuarioNuevoModal abierto={modalPreRegistro} onCerrar={() => setModalPreRegistro(false)} onCrearUsuario={crearUsuario} />
+            <UsuarioRolModal usuario={usuarioModalRol} dependencias={dependencias} procesando={procesandoId === usuarioModalRol?.id}
+                esMismoUsuario={Number(usuarioModalRol?.id) === Number(user?.id)}
+                onCerrar={() => setUsuarioModalRol(null)} onConfirmar={actualizarPerfil} />
+            <UsuarioNuevoModal abierto={modalPreRegistro} dependencias={dependencias} onCerrar={() => setModalPreRegistro(false)} onCrearUsuario={crearUsuario} />
             <UsuarioCargaMasivaModal abierto={modalCargaMasiva} onCerrar={() => setModalCargaMasiva(false)} onImportarMasivo={importarMasivo} />
         </div>
     );

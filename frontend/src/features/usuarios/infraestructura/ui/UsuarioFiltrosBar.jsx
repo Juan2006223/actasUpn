@@ -8,13 +8,9 @@ export default function UsuarioFiltrosBar({
 }) {
     const roles = [
         { id: 'TODOS', label: 'Todos' },
-        { id: 'ADMIN', label: 'Administradores' },
-        { id: 'SUPERVISOR', label: 'Supervisores' },
-        { id: 'COORDINADOR', label: 'Coordinadores' },
-        { id: 'TEACHER', label: 'Docentes' },
-        { id: 'APOYO', label: 'Apoyo' },
-        { id: 'ASISTENTE', label: 'Asistentes' },
-        { id: 'STUDENT', label: 'Estudiantes' },
+        { id: 'REDACTOR', label: 'Redactores' },
+        { id: 'REVISOR', label: 'Revisores' },
+        { id: 'ADMIN', label: 'Superadministradores' },
     ];
 
     return (
@@ -24,7 +20,7 @@ export default function UsuarioFiltrosBar({
                     type="text"
                     value={busqueda}
                     onChange={(e) => onBusquedaChange(e.target.value)}
-                    placeholder="Buscar por nombre, correo o cédula..."
+                    placeholder="Buscar por nombre, correo, cédula, cargo o dependencia..."
                     className="w-full pl-3.5 pr-3.5 py-2 text-xs text-slate-800 bg-slate-50 border border-slate-200/80 rounded-xl focus:bg-white focus:border-brand-blue focus:ring-1 focus:ring-brand-blue outline-none transition placeholder:text-slate-400"
                 />
             </div>

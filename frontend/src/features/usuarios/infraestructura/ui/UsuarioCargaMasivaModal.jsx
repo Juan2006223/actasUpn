@@ -42,7 +42,7 @@ export default function UsuarioCargaMasivaModal({ abierto, onCerrar, onImportarM
     };
 
     const descargarPlantilla = () => {
-        const contenido = 'NOMBRES,APELLIDOS,DOCUMENTO,CORREO INSTITUCIONAL,ROL\nAna Lucia,Garcia Restrepo,1172164,docente@pedagogica.edu.co,TEACHER\n';
+        const contenido = 'NOMBRES,APELLIDOS,DOCUMENTO,CORREO INSTITUCIONAL,CARGO,DEPENDENCIA,ROL\nAna Lucia,Garcia Restrepo,1172164,docente@pedagogica.edu.co,Docente,Facultad de Educación,REDACTOR\n';
         const url = URL.createObjectURL(new Blob(['\uFEFF', contenido], { type: 'text/csv;charset=utf-8' }));
         const link = document.createElement('a');
         link.href = url;
@@ -62,6 +62,8 @@ export default function UsuarioCargaMasivaModal({ abierto, onCerrar, onImportarM
                     email: f.emailInstitucional,
                     first_name: f.nombres,
                     last_name: f.apellidos,
+                    cargo: f.cargo,
+                    dependencia: f.dependencia,
                     role: f.role,
                 }))
             );
@@ -148,7 +150,7 @@ export default function UsuarioCargaMasivaModal({ abierto, onCerrar, onImportarM
                                     {nombreArchivo || 'Haz clic para seleccionar un archivo CSV'}
                                 </span>
                                 <span className="mt-1 text-[10px] text-slate-400">
-                                    Columnas: NOMBRES, APELLIDOS, DOCUMENTO, CORREO INSTITUCIONAL, ROL
+                                    Columnas: NOMBRES, APELLIDOS, DOCUMENTO, CORREO INSTITUCIONAL, CARGO, DEPENDENCIA, ROL (REDACTOR, REVISOR o ADMIN; si se deja vacío queda REDACTOR). Las dependencias que no existan se crean.
                                 </span>
                                 <input
                                     type="file"

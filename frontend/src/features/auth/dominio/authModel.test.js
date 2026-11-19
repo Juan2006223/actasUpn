@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
     validarCredenciales,
-    esEstudiante,
+    esRevisor,
     esAdmin,
     puedeGestionarGrupos,
     obtenerNombreCompleto,
@@ -16,13 +16,13 @@ test('authModel - validarCredenciales rechaza vacios y limpia espacios', () => {
 });
 
 test('authModel - roles, permisos de grupos/usuarios y nombre completo', () => {
-    assert.equal(esEstudiante({ role: 'STUDENT' }), true);
+    assert.equal(esRevisor({ role: 'REVISOR' }), true);
     assert.equal(esAdmin({ role: 'ADMIN' }), true);
-    assert.equal(esAdmin({ role: 'COORDINADOR' }), false);
-    assert.equal(puedeGestionarGrupos({ role: 'SUPERVISOR' }), true);
-    assert.equal(puedeGestionarGrupos({ role: 'COORDINADOR' }), true);
-    assert.equal(puedeGestionarGrupos({ role: 'TEACHER' }), true);
-    assert.equal(puedeGestionarGrupos({ role: 'ASISTENTE' }), false);
+    assert.equal(esAdmin({ role: 'REVISOR' }), false);
+    assert.equal(puedeGestionarGrupos({ role: 'REVISOR' }), true);
+    assert.equal(puedeGestionarGrupos({ role: 'REDACTOR' }), true);
+    assert.equal(puedeGestionarGrupos({ role: 'ADMIN' }), true);
+    assert.equal(puedeGestionarGrupos({ role: 'TEACHER' }), false);
     assert.equal(obtenerNombreCompleto({ first_name: 'Ana', last_name: 'Gomez' }), 'Ana Gomez');
 });
 

@@ -24,3 +24,27 @@ export async function importarUsuariosMasivo(registros) {
     const res = await api.post('/usuarios/importar/', { registros });
     return res.data;
 }
+
+export async function actualizarUsuario(usuarioId, datos) {
+    const res = await api.patch(`/usuarios/${usuarioId}/`, datos);
+    return res.data;
+}
+
+export async function obtenerDependencias() {
+    const res = await api.get('/dependencias/');
+    return res.data;
+}
+
+export async function crearDependencia(nombre) {
+    const res = await api.post('/dependencias/', { nombre });
+    return res.data;
+}
+
+export async function actualizarDependencia(id, datos) {
+    const res = await api.patch(`/dependencias/${id}/`, datos);
+    return res.data;
+}
+
+export async function eliminarDependencia(id) {
+    await api.delete(`/dependencias/${id}/`);
+}

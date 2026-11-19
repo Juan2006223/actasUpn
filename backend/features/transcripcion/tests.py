@@ -269,8 +269,8 @@ class GrabacionesApiTests(TestCase):
         self.addCleanup(parche.stop)
 
         User = get_user_model()
-        self.docente = User.objects.create_user(username='doc', password='x', role='TEACHER')
-        self.otro = User.objects.create_user(username='otro', password='x', role='TEACHER')
+        self.docente = User.objects.create_user(username='doc', password='x', role='REDACTOR')
+        self.otro = User.objects.create_user(username='otro', password='x', role='REDACTOR')
         self.client = APIClient()
         self.client.force_authenticate(self.docente)
 
@@ -402,7 +402,7 @@ class GrabacionesApiTests(TestCase):
         self.assertEqual(intruso.put(f'/api/grabaciones/{pid}/contenido/?offset=0', data=b'X',
                                      content_type='application/octet-stream').status_code, 403)
 
-        estudiante = get_user_model().objects.create_user(username='est', password='x', role='STUDENT')
+        estudiante = get_user_model().objects.create_user(username='est', password='x', role='SIN_ROL')
         cliente_est = APIClient()
         cliente_est.force_authenticate(estudiante)
         self.assertEqual(cliente_est.post('/api/grabaciones/', {'texto': 'hola'}, format='json').status_code, 403)

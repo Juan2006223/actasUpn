@@ -1,14 +1,6 @@
 import React, { useState } from 'react';
+import { ETIQUETA_ROL } from '../../features/auth/dominio/authModel';
 
-const ROLE_LABELS = {
-    ADMIN: 'SUPERADMINISTRADOR',
-    SUPERVISOR: 'SUPERVISOR',
-    COORDINADOR: 'COORDINADOR',
-    TEACHER: 'DOCENTE',
-    APOYO: 'PROFESIONAL APOYO',
-    ASISTENTE: 'ASISTENTE',
-    STUDENT: 'ESTUDIANTE',
-};
 
 const PERIODOS = [
     { id: '2026-2', codigo: '2026-2', nombre: 'Período Institucional 2026-2', estado: 'PLANIFICACION' },
@@ -24,7 +16,7 @@ export default function AppHeader({ seccionActivaNombre, usuario }) {
         || usuario?.username
         || 'Usuario';
     const inicial = nombreCompleto.charAt(0).toUpperCase();
-    const rolLabel = ROLE_LABELS[usuario?.role] || usuario?.role || 'INSTITUCIONAL';
+    const rolLabel = (ETIQUETA_ROL[usuario?.role] || usuario?.role || 'Institucional').toUpperCase();
 
     return (
         <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-3.5 px-6 bg-white/80 backdrop-blur-md rounded-3xl border border-slate-100 shadow-2xs no-print">

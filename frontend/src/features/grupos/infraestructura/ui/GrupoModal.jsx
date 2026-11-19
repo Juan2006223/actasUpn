@@ -40,7 +40,10 @@ export default function GrupoModal({ teachers = [], onClose, onSave, notify }) {
         setConvocados(lista);
         setForm((f) => ({
             ...f,
-            features: lista.map((item) => `${item.full_name || item.username} (${item.role})`).join(', '),
+            features: lista.map((item) => {
+                const nombre = item.full_name || item.username;
+                return item.cargo ? `${nombre} (${item.cargo})` : nombre;
+            }).join(', '),
         }));
     };
 
@@ -131,7 +134,11 @@ export default function GrupoModal({ teachers = [], onClose, onSave, notify }) {
                                 {sugerencias.map((u) => (
                                     <button key={u.id} type="button" onClick={() => agregarConvocado(u)} className="w-full px-3 py-2 rounded-xl text-left text-xs hover:bg-blue-50 flex items-center justify-between gap-2 transition cursor-pointer">
                                         <span className="font-bold text-slate-800 truncate">{u.full_name || u.username} · <span className="font-medium text-slate-400">{u.email}</span></span>
-                                        <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-blue-50 text-brand-blue shrink-0">{u.role}</span>
+                                        {(u.cargo || u.dependencia_nombre) && (
+                                            <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-blue-50 text-brand-blue shrink-0">
+                                                {[u.cargo, u.dependencia_nombre].filter(Boolean).join(' · ')}
+                                            </span>
+                                        )}
                                     </button>
                                 ))}
                             </div>

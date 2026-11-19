@@ -99,7 +99,7 @@ export default function DetalleGrupoInspector({ grupo, nombreAsesor, onDelete })
                         {integrantes.map((u, idx) => (
                             <span key={u.id || idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 border border-slate-200 text-slate-800 text-[11px] font-bold">
                                 <span>{u.full_name || `${u.first_name || ''} ${u.last_name || ''}`.trim()}</span>
-                                <span className="px-1.5 py-0.2 rounded-md bg-slate-900 text-white text-[10px] font-black">{u.role}</span>
+                                {u.cargo && <span className="px-1.5 rounded-md bg-slate-900 text-white text-[10px] font-black">{u.cargo}</span>}
                             </span>
                         ))}
                     </div>

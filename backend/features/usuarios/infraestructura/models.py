@@ -1,17 +1,32 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
+class Dependencia(models.Model):
+    """Dependencia institucional (facultad, centro, oficina). La administra el superadministrador."""
+    nombre = models.CharField(max_length=150, unique=True)
+    activa = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['nombre']
+        verbose_name = 'Dependencia'
+        verbose_name_plural = 'Dependencias'
+
+    def __str__(self):
+        return self.nombre
+
+
 class User(AbstractUser):
+    # Rol en la plataforma. El cargo institucional (director, docente...) va aparte en `cargo`.
     ROLE_CHOICES = (
-        ('ADMIN', 'Administrador'),
-        ('SUPERVISOR', 'Supervisor'),
-        ('COORDINADOR', 'Coordinador'),
-        ('TEACHER', 'Docente'),
-        ('APOYO', 'Apoyo'),
-        ('ASISTENTE', 'Asistente'),
-        ('STUDENT', 'Estudiante'),
+        ('ADMIN', 'Superadministrador'),
+        ('REVISOR', 'Revisor'),
+        ('REDACTOR', 'Redactor'),
     )
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='STUDENT')
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='REDACTOR')
+    cargo = models.CharField(max_length=150, blank=True, default='')
+    dependencia = models.ForeignKey(
+        Dependencia, null=True, blank=True, on_delete=models.SET_NULL, related_name='usuarios')
     document_number = models.CharField(max_length=30, unique=True, null=True, blank=True)
     personal_email = models.EmailField(blank=True, null=True)
     phone_number = models.CharField(max_length=20, blank=True, null=True)
