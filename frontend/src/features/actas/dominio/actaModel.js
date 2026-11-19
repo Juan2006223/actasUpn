@@ -1,13 +1,45 @@
-export const ROLE_ES = {
-    ADMIN: 'Superadministrador',
-    SUPERVISOR: 'Supervisor',
-    COORDINADOR: 'Coordinador',
-    COORDINATOR: 'Coordinador',
-    TEACHER: 'Docente',
-    APOYO: 'Apoyo',
-    ASISTENTE: 'Asistente',
-    STUDENT: 'Estudiante',
+/** Lo que va en la columna "Cargo/Dependencia" del acta, a partir del usuario del directorio. */
+export function cargoDePersona(persona) {
+    return [persona?.cargo, persona?.dependencia_nombre || persona?.dependencia]
+        .map((v) => String(v || '').trim())
+        .filter(Boolean)
+        .join(' / ');
+}
+
+// ── Estados del acta ──────────────────────────────────────────
+// Revisar es opcional: quien redacta puede publicar directamente para firmas.
+export const ESTADOS_ACTA = {
+    BORRADOR: { label: 'Borrador', clase: 'bg-amber-50 text-amber-700 border-amber-200', punto: 'bg-amber-500' },
+    EN_REVISION: { label: 'En revisión', clase: 'bg-indigo-50 text-indigo-700 border-indigo-200', punto: 'bg-indigo-500' },
+    PARA_FIRMA: { label: 'Para firmas', clase: 'bg-sky-50 text-sky-700 border-sky-200', punto: 'bg-sky-500' },
+    FIRMADA: { label: 'Firmada', clase: 'bg-[#D1FAE5] text-[#065F46] border-[#A7F3D0]', punto: 'bg-[#10B981]' },
 };
+
+/** Estado que se muestra: una publicada en la que ya firmaron todas las personas aparece como "Firmada". */
+export function estadoVisible(acta) {
+    const firmas = acta?.firmas || [];
+    const estado = acta?.estado || (acta?.borrador ? 'BORRADOR' : 'PARA_FIRMA');
+    if (estado === 'PARA_FIRMA' && firmas.length > 0 && firmas.every((f) => f.firmado)) return 'FIRMADA';
+    return estado;
+}
+
+// Botones de cambio de estado según desde dónde y hacia dónde va el acta.
+export function accionDeEstado(acta, destino, esCreador) {
+    const desde = acta?.estado;
+    if (destino === 'EN_REVISION') return { texto: 'Enviar a revisión', pideMotivo: false, tono: 'indigo' };
+    if (destino === 'PARA_FIRMA') {
+        return desde === 'EN_REVISION'
+            ? { texto: 'Aprobar y publicar para firmas', pideMotivo: false, tono: 'emerald' }
+            : { texto: 'Publicar para firmas', pideMotivo: false, tono: 'emerald' };
+    }
+    if (desde === 'PARA_FIRMA') {
+        return { texto: 'Reabrir para corregir', pideMotivo: true, tono: 'rose',
+            confirmar: 'Se anularán las firmas que ya se registraron y el acta volverá a borrador.' };
+    }
+    if (desde === 'EN_REVISION' && !esCreador) return { texto: 'Devolver con observaciones', pideMotivo: true, tono: 'amber' };
+    return { texto: 'Retirar de revisión', pideMotivo: false, tono: 'slate' };
+}
+
 
 export const mkActa = () => ({
     isNew: true,
@@ -32,18 +64,38 @@ export const mkActa = () => ({
     comentarios: [],
 });
 
+const normalizarNombre = (nombre) => String(nombre || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().split(/\s+/).filter(Boolean).join(' ');
+
+const nombreValido = (nombre) => !!nombre && nombre.trim() !== '' && nombre.trim().toUpperCase() !== 'N/A';
+
+/**
+ * Toda persona en asistentes o invitados aparece en firmas, aunque se haya agregado después.
+ * Misma regla que aplica el servidor: por usuario y, si no hay usuario, por nombre.
+ */
 export function sincronizarFirmasConParticipantes(acta) {
-    const people = [...(acta.asistentes || []), ...(acta.invitados || [])]
-        .filter(r => r.nombre && r.nombre !== 'N/A' && r.nombre.trim() !== '');
-    const existingFirmas = acta.firmas || [];
-    const existingKeys = new Set(existingFirmas.map(f => f.user_id || f.nombre).filter(Boolean));
-    const toAdd = people
-        .filter(r => {
-            const key = r.user_id || r.nombre;
-            return key && !existingKeys.has(key);
-        })
-        .map(r => ({ nombre: r.nombre, firma: '', user_id: r.user_id || null, firmado: false, fecha: '' }));
-    return [...existingFirmas, ...toAdd];
+    const firmas = (acta?.firmas || []).map((f) => ({ ...f }));
+    const porId = new Map(firmas.filter((f) => f.user_id != null).map((f) => [String(f.user_id), f]));
+    const porNombre = new Map(firmas.map((f) => [normalizarNombre(f.nombre), f]));
+    [...(acta?.asistentes || []), ...(acta?.invitados || [])].forEach((p) => {
+        if (!nombreValido(p?.nombre)) return;
+        const uid = p.user_id != null && p.user_id !== '' ? String(p.user_id) : null;
+        let existente = uid ? porId.get(uid) : null;
+        if (!existente) {
+            const mismoNombre = porNombre.get(normalizarNombre(p.nombre));
+            if (mismoNombre && (!uid || mismoNombre.user_id == null || String(mismoNombre.user_id) === uid)) {
+                existente = mismoNombre;
+                if (uid) { existente.user_id = p.user_id; porId.set(uid, existente); }
+            }
+        }
+        if (!existente) {
+            const nueva = { nombre: p.nombre.trim(), firma: '', user_id: p.user_id ?? null, firmado: false, fecha: '' };
+            firmas.push(nueva);
+            porNombre.set(normalizarNombre(nueva.nombre), nueva);
+            if (uid) porId.set(uid, nueva);
+        }
+    });
+    return firmas;
 }
 
 export function importarCursoEnActa(acta, course, target) {
@@ -64,7 +116,7 @@ export function importarCursoEnActa(acta, course, target) {
     const targetField = target === 'grupo_completo' ? 'asistentes' : target;
     const newRows = course.students.map(s => ({
         nombre: resolveName(s),
-        cargo: ROLE_ES[s.role] || s.role || '',
+        cargo: cargoDePersona(s),
         email: s.email || '',
         user_id: s.id || null,
         foto: s.photo || ''
@@ -93,34 +145,38 @@ export function agregarMiFirmaEnActa(acta, user) {
     };
 }
 
+export function miFirma(acta, userId) {
+    return (acta?.firmas || []).find((f) => f.user_id != null && String(f.user_id) === String(userId));
+}
+
 export function filtrarMisActas(misActas = [], userId, misFilter = 'todas', misYear = '', misSearch = '') {
     let list = [...misActas];
     if (misFilter === 'pendientes') {
-        list = list.filter(a => {
-            const e = a.firmas?.find(f => f.user_id && String(f.user_id) === String(userId));
-            return !e?.firmado;
-        });
+        list = list.filter((a) => a.permisos?.firmar);
     } else if (misFilter === 'firmadas') {
-        list = list.filter(a => {
-            const e = a.firmas?.find(f => f.user_id && String(f.user_id) === String(userId));
-            return e?.firmado === true;
-        });
+        list = list.filter((a) => miFirma(a, userId)?.firmado === true);
+    } else if (misFilter === 'revision') {
+        list = list.filter((a) => a.estado === 'EN_REVISION' && a.permisos?.revisar);
+    } else if (misFilter === 'borradores') {
+        list = list.filter((a) => a.estado === 'BORRADOR');
     }
-    if (misYear) list = list.filter(a => (a.fecha || '').includes(misYear));
+    if (misYear) list = list.filter((a) => (a.fecha || '').includes(misYear));
     if (misSearch.trim()) {
         const q = misSearch.toLowerCase();
-        list = list.filter(a =>
-            [a.numero, a.lugar, a.instancias, a.orden_dia].some(v => (v || '').toLowerCase().includes(q))
+        list = list.filter((a) =>
+            [a.numero, a.lugar, a.instancias, a.orden_dia, a.creador_nombre].some((v) => (v || '').toLowerCase().includes(q))
         );
     }
     return list;
 }
 
-export function calcularPendientesPorFirmar(misActas = [], userId) {
-    return misActas.filter(a => {
-        const e = a.firmas?.find(f => f.user_id && String(f.user_id) === String(userId));
-        return e && !e.firmado;
-    }).length;
+/** Actas publicadas en las que a la persona todavía le falta firmar. */
+export function calcularPendientesPorFirmar(actas = []) {
+    return actas.filter((a) => a.permisos?.firmar).length;
+}
+
+export function calcularPorRevisar(actas = []) {
+    return actas.filter((a) => a.estado === 'EN_REVISION' && a.permisos?.revisar).length;
 }
 
 export function extraerAniosDisponibles(actas = [], misActas = []) {
@@ -132,24 +188,6 @@ export function extraerAniosDisponibles(actas = [], misActas = []) {
         }
     });
     return Array.from(years).sort().reverse();
-}
-
-export function aplicarFirmaEnActa(acta, userId, firmaData) {
-    const firmas = (acta.firmas || []).map(f => {
-        if (f.user_id && String(f.user_id) === String(userId)) {
-            return { ...f, firma: firmaData, firmado: true, fecha: new Date().toISOString() };
-        }
-        return f;
-    });
-    return { ...acta, firmas };
-}
-
-export function agregarComentarioEnActa(acta, autorNombre, texto) {
-    const comentarios = [
-        ...(acta.comentarios || []),
-        { autor: autorNombre, texto, fecha: new Date().toISOString() }
-    ];
-    return { ...acta, comentarios };
 }
 
 // ── Autoguardado ──────────────────────────────────────────────

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../../auth/aplicacion/AuthContext';
 import { useActas } from '../../aplicacion/useActas';
 import { useAutoguardado, almacenBorradores } from '../../aplicacion/useAutoguardado';
-import { mkActa, filtrarMisActas, claveBorrador, borradorEsRecuperable } from '../../dominio/actaModel';
+import { mkActa, filtrarMisActas, claveBorrador, borradorEsRecuperable, estadoVisible, accionDeEstado } from '../../dominio/actaModel';
+import EstadoActaBadge from './EstadoActaBadge';
 import BorradoresPendientes from './BorradoresPendientes';
 import * as actasApi from '../api/actasApi';
 import { eliminarGrabacion } from '../api/grabacionesApi';
@@ -25,7 +26,8 @@ export default function ActasPage() {
     const { dlg: confirmDlg, show: showConfirm, close: closeConfirm } = useConfirm();
     const {
         actas, misActas, loading, firmaPersonal, setFirmaPersonal,
-        loadActas, saveActa, autoguardarActa, deleteActa, firmarActa, guardarFirmaPersonal, comentar, pendingCount, availableYears,
+        loadActas, saveActa, autoguardarActa, deleteActa, firmarActa, guardarFirmaPersonal, comentar, cambiarEstado,
+        pendingCount, porRevisarCount, availableYears,
     } = useActas(user, addToast, actasApi);
 
     const [view, setView] = useState('list');
@@ -45,14 +47,12 @@ export default function ActasPage() {
     const [orden, setOrden] = useState('fecha');
     const [pagina, setPagina] = useState(1);
 
-    const isStudent = user?.role === 'STUDENT';
-    useEffect(() => { if (isStudent && view === 'list') setView('mis'); }, [isStudent, view]);
     useEffect(() => { setPagina(1); }, [view, misFilter, misYear, misSearch, orden]);
 
     const autoguardado = useAutoguardado({
         acta: current,
         base,
-        activo: view === 'form' && !!current && !isStudent,
+        activo: view === 'form' && !!current,
         userId: user?.id,
         guardarEnServidor: autoguardarActa,
         onActaCreada: (guardada) => setCurrent((p) => (p ? { ...p, id: guardada.id, isNew: false } : p)),
@@ -94,18 +94,18 @@ export default function ActasPage() {
         setBorradores((lista) => lista.filter((x) => x.clave !== b.clave));
     };
 
-    const handleNew = () => { if (isStudent) return; abrirFormulario(null); };
+    const handleNew = () => abrirFormulario(null);
     const handleEdit = (a) => {
-        if (isStudent) return;
-        if (a.creador_id && String(a.creador_id) !== String(user?.id)) {
-            addToast('Solo el creador puede editar', 'warning');
+        if (!a.permisos?.editar) {
+            addToast(a.estado === 'PARA_FIRMA'
+                ? 'El acta está publicada para firmas: reábrela para poder editarla.'
+                : 'Solo quien redactó el acta o el revisor de su dependencia pueden editarla.', 'warning');
             return;
         }
         abrirFormulario(a);
     };
     const handleView = (a) => { setCurrent({ ...a }); setPrevView(view); setView('preview'); };
     const handleDelete = (id) => {
-        if (isStudent) return;
         showConfirm('Eliminar Acta', '¿Estás seguro? No se puede deshacer.', async () => {
             closeConfirm();
             const grabacionId = [...actas, ...misActas].find((a) => a.id === id)?.grabacion_id;
@@ -123,10 +123,12 @@ export default function ActasPage() {
         // Si el autoguardado ya creó el acta, se actualiza esa misma en vez de crear otra.
         const idServidor = await autoguardado.detener();
         const id = current.id ?? idServidor;
-        const guardada = await saveActa({ ...current, id, isNew: !id, borrador: false });
+        const guardada = await saveActa({ ...current, id, isNew: !id });
         setSaving(false);
         if (guardada) {
             autoguardado.marcarGuardado(typeof guardada === 'object' ? guardada : null);
+            // Se deja seleccionada para que se vea enseguida cómo publicarla o enviarla a revisión.
+            if (typeof guardada === 'object') setSeleccionada(guardada);
             setView('list');
         }
     };
@@ -135,7 +137,17 @@ export default function ActasPage() {
         setView('list');
         loadActas();
     };
-    const handleSign = (actaId) => firmaPersonal ? firmarActa(actaId, firmaPersonal) : setSigningActaId(actaId);
+    // Con firma personal guardada se firma con un clic (el servidor usa la guardada); si no, se dibuja.
+    const handleSign = (actaId) => (firmaPersonal ? firmarActa(actaId) : setSigningActaId(actaId));
+    const handleCambiarEstado = (acta, destino, motivo) => {
+        const accion = accionDeEstado(acta, destino, String(acta.creador_id) === String(user?.id));
+        const mensajes = {
+            PARA_FIRMA: 'Acta publicada: las personas participantes ya pueden firmarla',
+            EN_REVISION: 'Acta enviada a revisión',
+            BORRADOR: accion.texto === 'Reabrir para corregir' ? 'Acta reabierta como borrador' : 'El acta volvió a borrador',
+        };
+        return cambiarEstado(acta.id, destino, motivo, mensajes[destino]);
+    };
 
     const baseSource = view === 'list' ? actas : misActas;
     const filteredList = useMemo(() => {
@@ -160,7 +172,7 @@ export default function ActasPage() {
     }, [filteredList]);
 
     if (view === 'preview' && current) return <ActasPrintView acta={current} onBack={() => setView(prevView)} />;
-    if (view === 'form' && current && !isStudent) {
+    if (view === 'form' && current) {
         return <ActasForm acta={current} step={step} setStep={setStep} user={user} onChange={setCurrent} onSave={handleSave} saving={saving} onPreview={() => { setPrevView('form'); setView('preview'); }} onBack={handleBack}
             autoguardado={autoguardado} recuperadoEn={recuperadoEn} onDescartarRecuperado={descartarRecuperado} />;
     }
@@ -173,8 +185,8 @@ export default function ActasPage() {
             {showGestionFirma && <GestionFirmaModal firmaActual={firmaPersonal} onSave={async (d) => { await guardarFirmaPersonal(d); setShowGestionFirma(false); }} onDelete={() => setFirmaPersonal(null)} onClose={() => setShowGestionFirma(false)} />}
 
             <section className="space-y-6">
-                <ActasHeader isStudent={isStudent} onNewActa={handleNew} view={view} setView={setView} allActasCount={actas.length} myActasCount={misActas.length} firmadasCount={firmadasCount} participantesCount={participantesCount} pendingCount={pendingCount} firmaPersonal={firmaPersonal} onOpenGestionFirma={() => setShowGestionFirma(true)} />
-                {!isStudent && <BorradoresPendientes borradores={borradores} onContinuar={continuarBorrador} onDescartar={descartarBorrador} />}
+                <ActasHeader onNewActa={handleNew} porRevisarCount={porRevisarCount} onVerPorRevisar={() => { setView('list'); setMisFilter('revision'); }} view={view} setView={setView} allActasCount={actas.length} myActasCount={misActas.length} firmadasCount={firmadasCount} participantesCount={participantesCount} pendingCount={pendingCount} firmaPersonal={firmaPersonal} onOpenGestionFirma={() => setShowGestionFirma(true)} />
+                <BorradoresPendientes borradores={borradores} onContinuar={continuarBorrador} onDescartar={descartarBorrador} />
                 <ActasFilters misFilter={misFilter} setMisFilter={setMisFilter} misYear={misYear} setMisYear={setMisYear} misSearch={misSearch} setMisSearch={setMisSearch} orden={orden} setOrden={setOrden} availableYears={availableYears} />
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -182,10 +194,10 @@ export default function ActasPage() {
                         <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-5 space-y-4">
                             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                                 <div>
-                                    <h3 className="text-sm font-black text-slate-900">{view === 'list' ? 'Todas las actas' : 'Mis actas'}</h3>
+                                    <h3 className="text-sm font-black text-slate-900">{view === 'list' ? 'Actas que puedo ver' : 'Mis actas'}</h3>
                                     <p className="text-xs font-semibold text-slate-500">{filteredList.length} resultados</p>
                                 </div>
-                                {!isStudent && <button type="button" onClick={handleNew} className="text-xs font-black text-emerald-600 hover:text-emerald-700 cursor-pointer">+ Nueva acta</button>}
+                                <button type="button" onClick={handleNew} className="text-xs font-black text-emerald-600 hover:text-emerald-700 cursor-pointer">+ Nueva acta</button>
                             </div>
 
                             {loading ? (
@@ -209,9 +221,7 @@ export default function ActasPage() {
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-xs font-black text-slate-900 truncate">{a.numero ? `Acta ${a.numero}` : `Acta #${a.id}`}</span>
                                                             <span className="text-[9px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-extrabold">{a.tipo || 'Regular'}</span>
-                                                            {a.borrador
-                                                                ? <span className="text-[9px] px-2 py-0.5 rounded-full font-black border bg-amber-50 text-amber-700 border-amber-200">Borrador</span>
-                                                                : <span className="text-[9px] px-2 py-0.5 rounded-full font-black border bg-[#D1FAE5] text-[#065F46] border-[#A7F3D0]">Activo</span>}
+                                                            <EstadoActaBadge estado={estadoVisible(a)} pequeno />
                                                         </div>
                                                         <p className="text-[11px] font-bold text-slate-400 mt-0.5 truncate">Salón / Lugar {a.lugar || 'UPN'} · Código {a.numero || '01'} · {a.instancias || 'FOR023GDC'}</p>
                                                     </div>
@@ -237,7 +247,7 @@ export default function ActasPage() {
                     </div>
 
                     <div className="lg:col-span-5">
-                        <ActaCard acta={seleccionada} userId={user?.id} onEdit={!isStudent ? () => handleEdit(seleccionada) : undefined} onDelete={!isStudent ? () => handleDelete(seleccionada.id) : undefined} onView={() => handleView(seleccionada)} onSign={() => handleSign(seleccionada.id)} onComment={(id, txt) => comentar(id, txt)} />
+                        <ActaCard acta={seleccionada} userId={user?.id} onEdit={() => handleEdit(seleccionada)} onDelete={() => handleDelete(seleccionada.id)} onView={() => handleView(seleccionada)} onSign={() => handleSign(seleccionada.id)} onComment={(id, txt) => comentar(id, txt)} onCambiarEstado={handleCambiarEstado} />
                     </div>
                 </div>
             </section>

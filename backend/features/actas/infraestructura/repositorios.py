@@ -1,7 +1,26 @@
-from typing import List, Optional
+from typing import Dict, List, Optional, Set
+from django.contrib.auth import get_user_model
+from django.db import transaction
 from .models import ActaReunion, FirmaUsuario
-from ..dominio.entidades import ActaReunionEntidad, FirmaUsuarioEntidad, extraer_participantes_ids
+from ..dominio.entidades import ActaReunionEntidad, FirmaUsuarioEntidad, Actor
 from ..dominio.puertos import RepositorioActas, RepositorioFirmas
+
+
+def nombres_de_dependencias(ids: Set[Optional[int]]) -> Dict[int, str]:
+    ids = {i for i in ids if i}
+    if not ids:
+        return {}
+    from features.usuarios.infraestructura.models import Dependencia
+    return dict(Dependencia.objects.filter(pk__in=ids).values_list('id', 'nombre'))
+
+
+def nombres_de_usuarios(ids: Set[Optional[int]]) -> Dict[int, str]:
+    ids = {i for i in ids if i}
+    if not ids:
+        return {}
+    User = get_user_model()
+    return {u.id: (f'{u.first_name} {u.last_name}'.strip() or u.username)
+            for u in User.objects.filter(pk__in=ids).only('id', 'first_name', 'last_name', 'username')}
 
 
 class DjangoActasRepository(RepositorioActas):
@@ -12,47 +31,44 @@ class DjangoActasRepository(RepositorioActas):
             creador_id=model.creador_id,
             participantes_ids=model.participantes_ids or [],
             updated_at=model.updated_at,
+            estado=model.estado,
+            dependencia_id=model.dependencia_id,
         )
 
-    def listar_por_usuario(self, user_id: int, es_admin: bool = False) -> List[ActaReunionEntidad]:
-        if es_admin:
-            qs = ActaReunion.objects.all()
-        else:
-            qs = ActaReunion.objects.filter(creador_id=user_id)
-        return [self._to_entity(m) for m in qs]
+    def listar_visibles(self, actor: Actor) -> List[ActaReunionEntidad]:
+        if actor.es_admin:
+            return [self._to_entity(m) for m in ActaReunion.objects.all()]
+        # La participación vive en un JSON: se filtra en Python lo que no se puede filtrar en la consulta.
+        actas = (self._to_entity(m) for m in ActaReunion.objects.all())
+        return [a for a in actas if a.puede_consultar(actor)]
 
     def listar_mis_actas(self, user_id: int) -> List[ActaReunionEntidad]:
-        uid_str = str(user_id)
-        resultado = []
-        for m in ActaReunion.objects.all():
-            entidad = self._to_entity(m)
-            if entidad.pertenece_a_usuario(int(uid_str)):
-                resultado.append(entidad)
-        return resultado
+        actas = (self._to_entity(m) for m in ActaReunion.objects.all())
+        return [a for a in actas if a.pertenece_a_usuario(user_id)]
 
     def obtener_por_id(self, acta_id: int) -> Optional[ActaReunionEntidad]:
-        try:
-            m = ActaReunion.objects.get(pk=acta_id)
-            return self._to_entity(m)
-        except ActaReunion.DoesNotExist:
-            return None
+        m = ActaReunion.objects.filter(pk=acta_id).first()
+        return self._to_entity(m) if m else None
 
-    def guardar(self, acta: ActaReunionEntidad) -> ActaReunionEntidad:
-        pids = acta.participantes_ids or extraer_participantes_ids(acta.data)
-        if acta.creador_id and acta.creador_id not in pids:
-            pids.append(acta.creador_id)
+    def crear(self, acta: ActaReunionEntidad) -> ActaReunionEntidad:
+        m = ActaReunion.objects.create(
+            data=acta.data, creador_id=acta.creador_id, participantes_ids=acta.participantes_ids,
+            estado=acta.estado, dependencia_id=acta.dependencia_id,
+        )
+        return self._to_entity(m)
 
-        if acta.id:
-            m = ActaReunion.objects.get(pk=acta.id)
+    def modificar(self, acta_id: int, cambio) -> ActaReunionEntidad:
+        with transaction.atomic():
+            m = ActaReunion.objects.select_for_update().filter(pk=acta_id).first()
+            if not m:
+                raise LookupError('Acta no encontrada')
+            acta = self._to_entity(m)
+            cambio(acta)
+            acta.recalcular_participantes()
             m.data = acta.data
-            m.participantes_ids = pids
+            m.participantes_ids = acta.participantes_ids
+            m.estado = acta.estado
             m.save()
-        else:
-            m = ActaReunion.objects.create(
-                data=acta.data,
-                creador_id=acta.creador_id,
-                participantes_ids=pids
-            )
         return self._to_entity(m)
 
     def eliminar(self, acta_id: int) -> bool:

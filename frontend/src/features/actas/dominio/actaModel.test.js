@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-    mkActa, sincronizarFirmasConParticipantes, filtrarMisActas,
-    calcularPendientesPorFirmar, aplicarFirmaEnActa
+    mkActa, sincronizarFirmasConParticipantes, filtrarMisActas, calcularPendientesPorFirmar, calcularPorRevisar,
+    estadoVisible, accionDeEstado, cargoDePersona,
 } from './actaModel.js';
 
 test('actaModel - mkActa y sincronizacion de firmas', () => {
@@ -14,17 +14,48 @@ test('actaModel - mkActa y sincronizacion de firmas', () => {
     assert.equal(firmas[0].firmado, false);
 });
 
-test('actaModel - aplicar firma y calcular pendientes', () => {
+test('actaModel - quien se agrega después a asistentes queda como firmante, sin duplicar', () => {
     const acta = {
-        id: 1,
-        numero: '001',
-        fecha: '2026-10-24',
-        firmas: [{ nombre: 'Carlos Ruiz', user_id: 10, firmado: false, firma: '' }]
+        asistentes: [{ nombre: 'Carlos Ruiz', user_id: 10 }, { nombre: 'Nelsón Sánchez', user_id: 6 }, { nombre: 'N/A' }],
+        invitados: [{ nombre: '' }],
+        firmas: [
+            { nombre: 'Carlos Ruiz', user_id: 10, firmado: true, firma: 'x' },
+            { nombre: 'nelson sanchez', user_id: null, firmado: false },
+        ],
     };
-    assert.equal(calcularPendientesPorFirmar([acta], 10), 1);
-    const firmada = aplicarFirmaEnActa(acta, 10, 'data:image/png;base64,abc');
-    assert.equal(calcularPendientesPorFirmar([firmada], 10), 0);
-    assert.equal(filtrarMisActas([firmada], 10, 'firmadas').length, 1);
+    const firmas = sincronizarFirmasConParticipantes(acta);
+    assert.equal(firmas.length, 2);
+    assert.equal(firmas[0].firmado, true);
+    assert.equal(firmas[1].user_id, 6);
+});
+
+test('actaModel - pendientes, revisión y filtros usan los permisos que envía el servidor', () => {
+    const porFirmar = { id: 1, estado: 'PARA_FIRMA', permisos: { firmar: true }, firmas: [{ user_id: 10, firmado: false }] };
+    const firmada = { id: 2, estado: 'PARA_FIRMA', permisos: { firmar: false }, firmas: [{ user_id: 10, firmado: true }] };
+    const enRevision = { id: 3, estado: 'EN_REVISION', permisos: { revisar: true }, firmas: [] };
+    const actas = [porFirmar, firmada, enRevision];
+    assert.equal(calcularPendientesPorFirmar(actas), 1);
+    assert.equal(calcularPorRevisar(actas), 1);
+    assert.deepEqual(filtrarMisActas(actas, 10, 'pendientes').map((a) => a.id), [1]);
+    assert.deepEqual(filtrarMisActas(actas, 10, 'firmadas').map((a) => a.id), [2]);
+    assert.deepEqual(filtrarMisActas(actas, 10, 'revision').map((a) => a.id), [3]);
+});
+
+test('actaModel - estado visible y textos de los botones del flujo', () => {
+    assert.equal(estadoVisible({ estado: 'PARA_FIRMA', firmas: [{ firmado: true }] }), 'FIRMADA');
+    assert.equal(estadoVisible({ estado: 'PARA_FIRMA', firmas: [{ firmado: false }] }), 'PARA_FIRMA');
+    assert.equal(estadoVisible({ borrador: true }), 'BORRADOR');
+    assert.equal(accionDeEstado({ estado: 'BORRADOR' }, 'PARA_FIRMA', true).texto, 'Publicar para firmas');
+    assert.equal(accionDeEstado({ estado: 'EN_REVISION' }, 'PARA_FIRMA', false).texto, 'Aprobar y publicar para firmas');
+    assert.equal(accionDeEstado({ estado: 'EN_REVISION' }, 'BORRADOR', false).pideMotivo, true);
+    assert.equal(accionDeEstado({ estado: 'EN_REVISION' }, 'BORRADOR', true).texto, 'Retirar de revisión');
+    assert.ok(accionDeEstado({ estado: 'PARA_FIRMA' }, 'BORRADOR', true).confirmar);
+});
+
+test('actaModel - cargo y dependencia para la tabla de asistentes', () => {
+    assert.equal(cargoDePersona({ cargo: 'Director', dependencia_nombre: 'CINNDET' }), 'Director / CINNDET');
+    assert.equal(cargoDePersona({ cargo: 'Docente', dependencia: 'Facultad' }), 'Docente / Facultad');
+    assert.equal(cargoDePersona({}), '');
 });
 
 import {

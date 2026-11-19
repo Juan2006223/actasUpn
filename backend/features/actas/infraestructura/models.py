@@ -30,6 +30,14 @@ class ActaReunion(models.Model):
     data = models.JSONField(default=dict, blank=True)
     creador_id = models.IntegerField(null=True, blank=True, db_index=True)
     participantes_ids = models.JSONField(default=list, blank=True)
+    ESTADO_CHOICES = [
+        ('BORRADOR', 'Borrador'),
+        ('EN_REVISION', 'En revisión'),
+        ('PARA_FIRMA', 'Publicada para firmas'),
+    ]
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='BORRADOR', db_index=True)
+    # Dependencia de quien la creó: define qué revisor puede verla y corregirla.
+    dependencia_id = models.IntegerField(null=True, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

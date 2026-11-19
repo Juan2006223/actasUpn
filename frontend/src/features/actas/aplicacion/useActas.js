@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-    calcularPendientesPorFirmar, extraerAniosDisponibles,
-    aplicarFirmaEnActa, agregarComentarioEnActa, prepararActaParaGuardar
+    calcularPendientesPorFirmar, calcularPorRevisar, extraerAniosDisponibles, prepararActaParaGuardar
 } from '../dominio/actaModel';
+
+const detalle = (err, porDefecto) => err?.response?.data?.detail || porDefecto;
 
 export function useActas(user, addToast, actasService) {
     const [actas, setActas] = useState([]);
@@ -39,15 +40,15 @@ export function useActas(user, addToast, actasService) {
             let res;
             if (acta.id && !acta.isNew) {
                 res = await actasService.updateActa(acta.id, datos);
-                addToast?.('Acta actualizada con éxito', 'success');
+                addToast?.('Acta guardada', 'success');
             } else {
                 res = await actasService.createActa(datos);
-                addToast?.('Acta creada con éxito', 'success');
+                addToast?.('Acta guardada como borrador', 'success');
             }
             await loadActas();
             return res?.data || true;
-        } catch {
-            addToast?.('Error al guardar el acta', 'error');
+        } catch (err) {
+            addToast?.(detalle(err, 'Error al guardar el acta'), 'error');
             return false;
         }
     };
@@ -66,26 +67,34 @@ export function useActas(user, addToast, actasService) {
             addToast?.('Acta eliminada', 'success');
             await loadActas();
             return true;
-        } catch {
-            addToast?.('Error al eliminar el acta', 'error');
+        } catch (err) {
+            addToast?.(detalle(err, 'Error al eliminar el acta'), 'error');
             return false;
         }
     };
 
-    const firmarActa = async (actaId, firmaData) => {
+    // Firmar, observar y cambiar estado tienen su propio endpoint: el servidor valida el permiso
+    // y devuelve el acta actualizada, que reemplaza a la que hay en las listas.
+    const reemplazarEnListas = useCallback((actualizada) => {
+        const cambiar = (lista) => lista.map((a) => (a.id === actualizada.id ? actualizada : a));
+        setActas(cambiar);
+        setMisActas(cambiar);
+    }, []);
+
+    const accionSobreActa = async (llamada, exito, error) => {
         try {
-            const acta = [...actas, ...misActas].find(a => a.id === actaId);
-            if (!acta) return false;
-            const actualizada = aplicarFirmaEnActa(acta, user?.id, firmaData);
-            await actasService.updateActa(actaId, actualizada);
-            addToast?.('Acta firmada exitosamente', 'success');
-            await loadActas();
-            return true;
-        } catch {
-            addToast?.('Error al firmar acta', 'error');
-            return false;
+            const res = await llamada();
+            reemplazarEnListas(res.data);
+            if (exito) addToast?.(exito, 'success');
+            return res.data;
+        } catch (err) {
+            addToast?.(detalle(err, error), 'error');
+            return null;
         }
     };
+
+    const firmarActa = (actaId, firmaData) => accionSobreActa(
+        () => actasService.firmarActa(actaId, firmaData), 'Acta firmada', 'No se pudo firmar el acta');
 
     const guardarFirmaPersonal = async (firmaData) => {
         try {
@@ -99,30 +108,21 @@ export function useActas(user, addToast, actasService) {
         }
     };
 
-    const comentar = async (actaId, texto) => {
-        try {
-            const acta = [...actas, ...misActas].find(a => a.id === actaId);
-            if (!acta) return false;
-            const autor = `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || user?.username;
-            const actualizada = agregarComentarioEnActa(acta, autor, texto);
-            await actasService.updateActa(actaId, actualizada);
-            addToast?.('Comentario registrado', 'success');
-            await loadActas();
-            return true;
-        } catch {
-            addToast?.('Error al registrar comentario', 'error');
-            return false;
-        }
-    };
+    const comentar = (actaId, texto) => accionSobreActa(
+        () => actasService.agregarObservacion(actaId, texto), 'Observación enviada', 'No se pudo enviar la observación');
 
-    const pendingCount = useMemo(() => calcularPendientesPorFirmar(misActas, user?.id), [misActas, user]);
+    const cambiarEstado = (actaId, estado, motivo, mensaje) => accionSobreActa(
+        () => actasService.cambiarEstadoActa(actaId, estado, motivo), mensaje, 'No se pudo cambiar el estado del acta');
+
+    const pendingCount = useMemo(() => calcularPendientesPorFirmar(actas), [actas]);
+    const porRevisarCount = useMemo(() => calcularPorRevisar(actas), [actas]);
     const availableYears = useMemo(() => extraerAniosDisponibles(actas, misActas), [actas, misActas]);
 
     return {
         actas, misActas, loading,
         firmaPersonal, setFirmaPersonal,
         loadActas, saveActa, autoguardarActa, deleteActa,
-        firmarActa, guardarFirmaPersonal, comentar,
-        pendingCount, availableYears,
+        firmarActa, guardarFirmaPersonal, comentar, cambiarEstado,
+        pendingCount, porRevisarCount, availableYears,
     };
 }

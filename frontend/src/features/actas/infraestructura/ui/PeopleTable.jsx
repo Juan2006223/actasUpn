@@ -2,7 +2,7 @@
 import React from 'react';
 import { Trash2, Plus, Users } from 'lucide-react';
 import UserAutocomplete from './UserAutocomplete';
-import { ROLE_ES } from '../../dominio/actaModel';
+import { cargoDePersona } from '../../dominio/actaModel';
 
 export default function PeopleTable({ rows, onChange, onAdd, onDel, emptyRow, onImportCourse }) {
     return (
@@ -36,7 +36,7 @@ export default function PeopleTable({ rows, onChange, onAdd, onDel, emptyRow, on
                                         onChangeName={val => onChange(i, 'nombre', val)}
                                         onSelect={(user, name) => {
                                             onChange(i, 'nombre', name);
-                                            onChange(i, 'cargo', ROLE_ES[user.role] || user.role || user.cargo || '');
+                                            onChange(i, 'cargo', cargoDePersona(user));
                                             onChange(i, 'email', user.email || '');
                                             onChange(i, 'user_id', user.id);
                                             onChange(i, 'foto', user.photo || '');

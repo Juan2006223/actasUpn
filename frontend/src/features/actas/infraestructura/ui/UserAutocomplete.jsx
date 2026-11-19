@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Loader2 } from 'lucide-react';
 import { searchUsers } from '../api/actasApi';
-import { ROLE_ES } from '../../dominio/actaModel';
+import { cargoDePersona } from '../../dominio/actaModel';
 
 export default function UserAutocomplete({ value, onSelect, onChangeName, placeholder = 'Buscar nombre o cédula...' }) {
     const [q, setQ] = useState(value || '');
@@ -66,7 +66,7 @@ export default function UserAutocomplete({ value, onSelect, onChangeName, placeh
                         className="absolute left-0 top-full z-[90] mt-1 w-80 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden">
                         {results.slice(0, 6).map(user => {
                             const name = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.full_name || user.username;
-                            const rolEs = ROLE_ES[user.role] || user.role || '';
+                            const rolEs = cargoDePersona(user);
                             return (
                                 <button key={user.id} type="button" onClick={() => handleSelect(user)}
                                     className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-ilinyx-50 transition-colors text-left border-b border-slate-50 last:border-0 cursor-pointer">

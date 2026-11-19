@@ -9,6 +9,18 @@ Además del formulario del formato, el aplicativo puede:
 
 Todo funciona con herramientas **gratuitas**, y por defecto la IA corre **en el mismo computador**, sin enviar el contenido de las reuniones a servicios externos.
 
+### Roles y flujo de un acta
+
+El rol en la plataforma es distinto del **cargo** de la persona (director, docente…). Cada usuario tiene un rol, un cargo y una **dependencia**. El cargo y la dependencia salen solos en la columna "Cargo/Dependencia" del acta.
+
+| Rol | Qué puede hacer |
+|---|---|
+| **Redactor** (por defecto) | Crea actas y las edita mientras están en borrador. En las actas de otras personas solo firma y deja observaciones. |
+| **Revisor** | Lo mismo que un redactor. Además ve y corrige las actas de su dependencia, y las aprueba o las devuelve con observaciones. |
+| **Superadministrador** | Ve y corrige cualquier acta. Gestiona usuarios y la lista de dependencias. |
+
+Un acta pasa por estos estados: **Borrador → (opcional) En revisión → Para firmas**. Quien la redacta puede publicarla directamente para firmas, sin pasar por revisión. Solo se firma un acta publicada. Para corregir una publicada hay que reabrirla, y eso anula las firmas ya registradas. Las observaciones las ven quien redacta, el revisor y todas las personas que participan.
+
 ---
 
 ## Contenido

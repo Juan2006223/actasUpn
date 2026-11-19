@@ -9,3 +9,6 @@ export const getMiFirma = () => api.get('/actas/mi-firma/');
 export const saveMiFirma = (firma_data) => api.post('/actas/mi-firma/', { firma_data });
 export const searchUsers = (q) => api.get(`/usuarios/buscar/?q=${encodeURIComponent(q)}`);
 export const getAgonCourses = () => api.get('/grupos/cursos/');
+export const firmarActa = (id, firma_data) => api.post(`/actas/reuniones/${id}/firmar/`, firma_data ? { firma_data } : {});
+export const agregarObservacion = (id, texto) => api.post(`/actas/reuniones/${id}/observaciones/`, { texto });
+export const cambiarEstadoActa = (id, estado, motivo = '') => api.post(`/actas/reuniones/${id}/estado/`, { estado, motivo });

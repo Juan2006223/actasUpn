@@ -1,27 +1,38 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict, Any
-from .entidades import ActaReunionEntidad, FirmaUsuarioEntidad
+from typing import Callable, List, Optional, TypeVar
+from .entidades import ActaReunionEntidad, FirmaUsuarioEntidad, Actor
+
+T = TypeVar('T')
+
 
 class RepositorioActas(ABC):
     @abstractmethod
-    def listar_por_usuario(self, user_id: int, es_admin: bool = False) -> List[ActaReunionEntidad]:
-        pass
+    def listar_visibles(self, actor: Actor) -> List[ActaReunionEntidad]:
+        """Las actas que el actor puede consultar."""
 
     @abstractmethod
     def listar_mis_actas(self, user_id: int) -> List[ActaReunionEntidad]:
-        pass
+        """Las actas que creó o en las que participa."""
 
     @abstractmethod
     def obtener_por_id(self, acta_id: int) -> Optional[ActaReunionEntidad]:
         pass
 
     @abstractmethod
-    def guardar(self, acta: ActaReunionEntidad) -> ActaReunionEntidad:
+    def crear(self, acta: ActaReunionEntidad) -> ActaReunionEntidad:
         pass
+
+    @abstractmethod
+    def modificar(self, acta_id: int, cambio: Callable[[ActaReunionEntidad], T]) -> ActaReunionEntidad:
+        """
+        Lee el acta bloqueándola, aplica `cambio` y la guarda en una sola transacción, para que
+        dos personas firmando o comentando a la vez no se pisen. Lanza LookupError si no existe.
+        """
 
     @abstractmethod
     def eliminar(self, acta_id: int) -> bool:
         pass
+
 
 class RepositorioFirmas(ABC):
     @abstractmethod

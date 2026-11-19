@@ -44,11 +44,11 @@ export function StepResultados({ acta, set, setRow, addRow, delRow, Sec }) {
 
 export function StepFirmas({ acta, user, delRow, addMySig, onImportFirmas, Sec }) {
     return (
-        <Sec num="10" title="Firmas" hint="El firmante puede hacerlo desde 'Mis Actas'">
+        <Sec num="10" title="Firmas" hint="Cada persona firma desde la lista de actas cuando el acta se publique">
             <div className="flex flex-wrap items-center gap-3 mb-4 p-3 bg-ilinyx-50 rounded-xl border border-ilinyx-100">
                 <button type="button" onClick={addMySig}
                     className="inline-flex items-center gap-2 bg-ilinyx-700 text-white font-bold px-4 py-2 rounded-xl text-sm hover:bg-ilinyx-800 transition-all shadow cursor-pointer">
-                    <UserPlus className="h-4 w-4" /> Agregar mi firma
+                    <UserPlus className="h-4 w-4" /> Agregarme como firmante
                 </button>
                 <button type="button" onClick={onImportFirmas}
                     className="inline-flex items-center gap-2 bg-emerald-600 text-white font-bold px-4 py-2 rounded-xl text-sm hover:bg-emerald-700 transition-all shadow cursor-pointer">
@@ -56,9 +56,11 @@ export function StepFirmas({ acta, user, delRow, addMySig, onImportFirmas, Sec }
                 </button>
                 <div>
                     <p className="text-sm font-semibold text-ilinyx-800">
-                        Firmando como: {user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username : '—'}
+                        Los asistentes e invitados se agregan solos a esta lista.
                     </p>
-                    <p className="text-xs text-ilinyx-600">Los demás participantes pueden firmar desde "Mis Actas"</p>
+                    <p className="text-xs text-ilinyx-600">
+                        Cuando publiques el acta para firmas, cada persona (incluido tú) la firma desde la lista de actas.
+                    </p>
                 </div>
             </div>
             <div className="rounded-xl border border-slate-200 overflow-hidden">

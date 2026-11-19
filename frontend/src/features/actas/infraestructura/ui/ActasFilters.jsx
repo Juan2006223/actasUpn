@@ -36,14 +36,18 @@ export default function ActasFilters({
                 ))}
             </select>
 
+            <label htmlFor="filtro-estado" className="sr-only">Estado</label>
             <select
+                id="filtro-estado"
                 value={misFilter}
                 onChange={(e) => setMisFilter(e.target.value)}
                 className="px-3.5 py-2.5 text-xs rounded-2xl bg-white border border-slate-200 font-bold text-slate-700 cursor-pointer shrink-0 shadow-2xs"
             >
                 <option value="todas">Todos los estados</option>
-                <option value="firmadas">Firmadas</option>
-                <option value="pendientes">Por firmar</option>
+                <option value="borradores">Borradores</option>
+                <option value="revision">Por revisar (soy revisor)</option>
+                <option value="pendientes">Me falta firmar</option>
+                <option value="firmadas">Ya firmé</option>
             </select>
 
             <select

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Save, Eye, Printer, History } from 'lucide-react';
 import EstadoAutoguardado from './EstadoAutoguardado';
 import GrabacionPanel from './GrabacionPanel';
+import ObservacionesActa from './ObservacionesActa';
 import { formatoFecha } from './BorradoresPendientes';
 import CourseImportModal from './CourseImportModal';
 import { Sec, StepInfoGeneral, StepAgenda, StepResultados, StepFirmas } from './ActaFormStepGeneral';
@@ -60,6 +61,12 @@ export default function ActasForm({ acta, step, setStep, user, onChange, onSave,
                     <button type="button" onClick={onDescartarRecuperado} className="text-xs font-bold text-amber-800 hover:underline cursor-pointer">
                         Descartarlos y volver a la última versión guardada
                     </button>
+                </div>
+            )}
+
+            {(acta.comentarios || []).length > 0 && (
+                <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 px-4 py-3">
+                    <ObservacionesActa observaciones={acta.comentarios} puedeComentar={false} compacto />
                 </div>
             )}
 
