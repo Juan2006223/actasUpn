@@ -60,6 +60,9 @@ class InMemoryFirmaRepo(RepositorioFirmas):
         self.firmas[firma.user_id] = firma
         return firma
 
+    def eliminar_por_usuario(self, user_id):
+        return self.firmas.pop(user_id, None) is not None
+
 
 REDACTOR = Actor(10, 'REDACTOR', dependencia_id=1, nombre='Rita Redactora')
 PARTICIPANTE = Actor(20, 'REDACTOR', dependencia_id=1, nombre='Nelson Sanchez')
@@ -268,3 +271,11 @@ class ActasApiTests(TestCase):
         del_revisor = self.como(self.revisor).get(f"/api/actas/reuniones/{acta['id']}/")
         self.assertEqual(del_revisor.status_code, 200)
         self.assertTrue(del_revisor.data['permisos']['revisar'])
+
+    def test_mi_firma_guardar_y_eliminar_persiste(self):
+        c = self.como(self.redactor)
+        self.assertIsNone(c.get('/api/actas/mi-firma/').data['firma_data'])
+        self.assertEqual(c.post('/api/actas/mi-firma/', {'firma_data': FIRMA}, format='json').status_code, 200)
+        self.assertEqual(c.get('/api/actas/mi-firma/').data['firma_data'], FIRMA)
+        self.assertEqual(c.delete('/api/actas/mi-firma/').status_code, 204)
+        self.assertIsNone(c.get('/api/actas/mi-firma/').data['firma_data'])

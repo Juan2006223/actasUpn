@@ -26,7 +26,7 @@ export default function ActasPage() {
     const { dlg: confirmDlg, show: showConfirm, close: closeConfirm } = useConfirm();
     const {
         actas, misActas, loading, firmaPersonal, setFirmaPersonal,
-        loadActas, saveActa, autoguardarActa, deleteActa, firmarActa, guardarFirmaPersonal, comentar, cambiarEstado,
+        loadActas, saveActa, autoguardarActa, deleteActa, firmarActa, guardarFirmaPersonal, eliminarFirmaPersonal, comentar, cambiarEstado,
         pendingCount, porRevisarCount, availableYears,
     } = useActas(user, addToast, actasApi);
 
@@ -182,7 +182,7 @@ export default function ActasPage() {
             <ToastContainer toasts={toasts} />
             <ConfirmDialog {...confirmDlg} />
             {signingActaId && <SignaturePad open={true} userName={`${user?.first_name} ${user?.last_name}`} onClose={() => setSigningActaId(null)} onConfirm={async (f) => { await firmarActa(signingActaId, f); setSigningActaId(null); }} />}
-            {showGestionFirma && <GestionFirmaModal firmaActual={firmaPersonal} onSave={async (d) => { await guardarFirmaPersonal(d); setShowGestionFirma(false); }} onDelete={() => setFirmaPersonal(null)} onClose={() => setShowGestionFirma(false)} />}
+            {showGestionFirma && <GestionFirmaModal firmaActual={firmaPersonal} onSave={async (d) => { await guardarFirmaPersonal(d); setShowGestionFirma(false); }} onDelete={async () => { const ok = await eliminarFirmaPersonal(); if (ok) setShowGestionFirma(false); }} onClose={() => setShowGestionFirma(false)} />}
 
             <section className="space-y-6">
                 <ActasHeader onNewActa={handleNew} porRevisarCount={porRevisarCount} onVerPorRevisar={() => { setView('list'); setMisFilter('revision'); }} view={view} setView={setView} allActasCount={actas.length} myActasCount={misActas.length} firmadasCount={firmadasCount} participantesCount={participantesCount} pendingCount={pendingCount} firmaPersonal={firmaPersonal} onOpenGestionFirma={() => setShowGestionFirma(true)} />
@@ -217,18 +217,18 @@ export default function ActasPage() {
                                             <div key={a.id} onClick={() => setSeleccionada(a)} style={isSelected ? { borderColor: mainColor, backgroundColor: `${mainColor}14` } : undefined} className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between gap-3 ${isSelected ? 'shadow-xs ring-1 ring-offset-0' : 'border-slate-200/80 bg-white hover:bg-slate-50'}`}>
                                                 <div className="flex items-center gap-3.5 min-w-0 flex-1">
                                                     <div style={{ backgroundColor: mainColor }} className="w-10 h-10 rounded-xl text-white flex items-center justify-center shrink-0 shadow-xs"><IconRoom className="w-5 h-5" /></div>
-                                                    <div className="min-w-0">
-                                                        <div className="flex items-center gap-2">
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="flex items-center gap-2 min-w-0">
                                                             <span className="text-xs font-black text-slate-900 truncate">{a.numero ? `Acta ${a.numero}` : `Acta #${a.id}`}</span>
-                                                            <span className="text-[9px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-extrabold">{a.tipo || 'Regular'}</span>
+                                                            <span className="text-[9px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-extrabold shrink-0">{a.tipo || 'Regular'}</span>
                                                             <EstadoActaBadge estado={estadoVisible(a)} pequeno />
                                                         </div>
                                                         <p className="text-[11px] font-bold text-slate-400 mt-0.5 truncate">Salón / Lugar {a.lugar || 'UPN'} · Código {a.numero || '01'} · {a.instancias || 'FOR023GDC'}</p>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-4 shrink-0 text-xs font-bold text-slate-600">
-                                                    <span className="hidden sm:flex items-center gap-1"><IconLocationPin className="w-3.5 h-3.5 text-slate-400" /> {a.lugar || a.fecha || 'UPN'}</span>
-                                                    <span className="hidden md:flex items-center gap-1"><IconUsers className="w-3.5 h-3.5 text-slate-400" /> {personas} personas</span>
+                                                <div className="flex items-center gap-3 shrink-0 text-xs font-bold text-slate-600">
+                                                    <span className="hidden sm:flex items-center gap-1 max-w-[115px] whitespace-nowrap" title={a.lugar || a.fecha || 'UPN'}><IconLocationPin className="w-3.5 h-3.5 text-slate-400 shrink-0" /> <span className="truncate">{a.fecha || a.lugar || 'UPN'}</span></span>
+                                                    <span className="hidden md:flex items-center gap-1 whitespace-nowrap"><IconUsers className="w-3.5 h-3.5 text-slate-400 shrink-0" /> {personas} personas</span>
                                                 </div>
                                             </div>
                                         );

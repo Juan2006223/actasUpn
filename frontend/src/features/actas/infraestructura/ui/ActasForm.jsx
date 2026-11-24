@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Save, Eye, Printer, History } from 'lucide-react';
 import EstadoAutoguardado from './EstadoAutoguardado';
 import GrabacionPanel from './GrabacionPanel';
@@ -84,15 +84,13 @@ export default function ActasForm({ acta, step, setStep, user, onChange, onSave,
                 ))}
             </div>
 
-            <AnimatePresence mode="wait">
-                <motion.div key={step} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}
-                    className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-7">
-                    {step === 0 && <StepInfoGeneral acta={acta} set={set} setActa={onChange} setRow={setRow} addRow={addRow} delRow={delRow} setImportTarget={setImportTarget} />}
-                    {step === 1 && <StepAgenda acta={acta} set={set} />}
-                    {step === 2 && <StepResultados acta={acta} set={set} setRow={setRow} addRow={addRow} delRow={delRow} Sec={Sec} />}
-                    {step === 3 && <StepFirmas acta={acta} user={user} delRow={delRow} addMySig={addMySig} onImportFirmas={() => setImportTarget('firmas_import')} Sec={Sec} />}
-                </motion.div>
-            </AnimatePresence>
+            <motion.div key={step} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.15 }}
+                className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-7">
+                {step === 0 && <StepInfoGeneral acta={acta} set={set} setActa={onChange} setRow={setRow} addRow={addRow} delRow={delRow} setImportTarget={setImportTarget} />}
+                {step === 1 && <StepAgenda acta={acta} set={set} />}
+                {step === 2 && <StepResultados acta={acta} set={set} setRow={setRow} addRow={addRow} delRow={delRow} Sec={Sec} />}
+                {step === 3 && <StepFirmas acta={acta} user={user} delRow={delRow} addMySig={addMySig} onImportFirmas={() => setImportTarget('firmas_import')} Sec={Sec} />}
+            </motion.div>
 
             <div className="flex justify-between">
                 <button disabled={step === 0} onClick={() => setStep(s => s - 1)}

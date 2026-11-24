@@ -7,13 +7,17 @@ from ...aplicacion.casos_uso import GestionarFirmaUseCase
 firma_repo = DjangoFirmasRepository()
 gestionar_firma_uc = GestionarFirmaUseCase(firma_repo)
 
-@api_view(['GET', 'POST'])
+@api_view(['GET', 'POST', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def mi_firma(request):
     user = request.user
     if request.method == 'GET':
         firma_data = gestionar_firma_uc.obtener_firma(user.id)
         return Response({'firma_data': firma_data})
+
+    if request.method == 'DELETE':
+        gestionar_firma_uc.eliminar_firma(user.id)
+        return Response(status=204)
 
     firma_data = request.data.get('firma_data', '').strip()
     if not firma_data:

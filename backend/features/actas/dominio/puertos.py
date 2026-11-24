@@ -42,3 +42,7 @@ class RepositorioFirmas(ABC):
     @abstractmethod
     def guardar_o_actualizar(self, firma: FirmaUsuarioEntidad) -> FirmaUsuarioEntidad:
         pass
+
+    @abstractmethod
+    def eliminar_por_usuario(self, user_id: int) -> bool:
+        pass

@@ -90,3 +90,7 @@ class DjangoFirmasRepository(RepositorioFirmas):
             defaults={'firma_data': firma.firma_data}
         )
         return FirmaUsuarioEntidad(id=f.id, user_id=f.user_id, firma_data=f.firma_data)
+
+    def eliminar_por_usuario(self, user_id: int) -> bool:
+        borrados, _ = FirmaUsuario.objects.filter(user_id=user_id).delete()
+        return borrados > 0

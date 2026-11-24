@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import sys
 from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -39,6 +40,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -46,6 +48,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 ROOT_URLCONF = 'config.urls'
 
@@ -73,6 +77,15 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+if os.environ.get('DATABASE_URL') and 'test' not in sys.argv:
+    import dj_database_url
+    es_pooler = '-pooler.' in os.environ['DATABASE_URL']
+    DATABASES['default'] = dj_database_url.config(
+        conn_max_age=0 if es_pooler else 600,
+        conn_health_checks=True,
+    )
+    if es_pooler:
+        DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
 
 AUTH_USER_MODEL = 'usuarios.User'
 
@@ -98,13 +111,18 @@ SIMPLE_JWT = {
 }
 
 CORS_ALLOWED_ORIGINS = [
-    origin.strip()
+    origin.strip().rstrip('/')
     for origin in os.environ.get(
         'CORS_ALLOWED_ORIGINS',
         'http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174'
     ).split(',')
     if origin.strip()
 ]
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip().rstrip('/')
+    for origin in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')
+    if origin.strip()
+] + [o for o in CORS_ALLOWED_ORIGINS if o.startswith('https://')] + ['https://*.up.railway.app']
 CORS_ALLOW_ALL_ORIGINS = DEBUG and os.environ.get('CORS_STRICT', 'False') != 'True'
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = ['DELETE', 'GET', 'OPTIONS', 'PATCH', 'POST', 'PUT']
@@ -118,9 +136,9 @@ TIME_ZONE = 'America/Bogota'
 USE_I18N = True
 USE_TZ = True
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT = Path(os.environ.get('STATIC_ROOT', BACKEND_DIR / 'staticfiles'))
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-MEDIA_ROOT = Path(os.environ.get('MEDIA_ROOT', BASE_DIR / 'media'))
+MEDIA_ROOT = Path(os.environ.get('MEDIA_ROOT', BACKEND_DIR / 'media'))
 
 
 def _bool_env(nombre, defecto):
@@ -145,7 +163,7 @@ TRANSCRIPCION = {
     'GEMINI_API_KEY': os.environ.get('GEMINI_API_KEY', ''),
     'GEMINI_MODELO': os.environ.get('GEMINI_MODELO', 'gemini-flash-latest'),
     'GROQ_API_KEY': os.environ.get('GROQ_API_KEY', ''),
-    'GROQ_MODELO': os.environ.get('GROQ_MODELO', 'llama-3.3-70b-versatile'),
+    'GROQ_MODELO': os.environ.get('GROQ_MODELO', 'openai/gpt-oss-120b'),
     'AUDIO_MAX_MB': int(os.environ.get('AUDIO_MAX_MB', '2048')),
     # Por privacidad y espacio, el audio se borra apenas se transcribe.
     'CONSERVAR_AUDIO': _bool_env('CONSERVAR_AUDIO', False),

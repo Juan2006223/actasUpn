@@ -3,7 +3,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from shared.dominio import es_superadmin, puede_crear_actas
+from django.contrib.auth import get_user_model
+from shared.dominio import es_revisor, es_superadmin, puede_crear_actas
 from ..aplicacion.casos_uso import ErrorDeValidacion
 from ..dominio.entidades import EXTENSIONES_PERMITIDAS, MAX_PARTES, Estado
 from . import contenedor, trabajador
@@ -107,6 +108,15 @@ def contenido(request, pk):
     return _manejar(accion)
 
 
+def _es_revisor_de_grabacion(user, grabacion_id: int) -> bool:
+    if not es_revisor(user) or not getattr(user, 'dependencia_id', None):
+        return False
+    p = contenedor.repo.obtener(grabacion_id)
+    if not p:
+        return False
+    return get_user_model().objects.filter(pk=p.creador_id, dependencia_id=user.dependencia_id).exists()
+
+
 @api_view(['GET', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def detalle(request, pk):
@@ -118,7 +128,8 @@ def detalle(request, pk):
         return _manejar(eliminar)
 
     def consultar():
-        p = contenedor.consultar_procesamiento().ejecutar(pk, request.user.id, es_admin)
+        autorizado = es_admin or _es_revisor_de_grabacion(request.user, pk)
+        p = contenedor.consultar_procesamiento().ejecutar(pk, request.user.id, autorizado)
         if p.estado in Estado.EN_PROCESO:
             # Si el servidor se reinició, el trabajador vuelve a arrancar y retoma la cola.
             trabajador.asegurar_en_ejecucion()

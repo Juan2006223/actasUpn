@@ -1,6 +1,6 @@
 from rest_framework import permissions, status
 from rest_framework.response import Response
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from shared.dominio import es_superadmin, puede_gestionar_grupos
@@ -49,6 +49,7 @@ def _serialize_usuario(entidad):
     }
 
 @api_view(['POST'])
+@authentication_classes([])
 @permission_classes([permissions.AllowAny])
 def login_view(request):
     username = request.data.get('username', '').strip()

@@ -7,6 +7,7 @@ export const updateActa = (id, data) => api.put(`/actas/reuniones/${id}/`, data)
 export const deleteActa = (id) => api.delete(`/actas/reuniones/${id}/`);
 export const getMiFirma = () => api.get('/actas/mi-firma/');
 export const saveMiFirma = (firma_data) => api.post('/actas/mi-firma/', { firma_data });
+export const deleteMiFirma = () => api.delete('/actas/mi-firma/');
 export const searchUsers = (q) => api.get(`/usuarios/buscar/?q=${encodeURIComponent(q)}`);
 export const getAgonCourses = () => api.get('/grupos/cursos/');
 export const firmarActa = (id, firma_data) => api.post(`/actas/reuniones/${id}/firmar/`, firma_data ? { firma_data } : {});

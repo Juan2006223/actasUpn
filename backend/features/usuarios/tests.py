@@ -190,3 +190,11 @@ class RenovarSesionApiTests(TestCase):
     def test_token_de_renovacion_invalido_se_rechaza(self):
         r = APIClient().post('/api/auth/refresh/', {'refresh': 'no-es-un-token'}, format='json')
         self.assertEqual(r.status_code, 401)
+
+    def test_login_ignora_token_invalido_en_cabecera(self):
+        get_user_model().objects.create_user(username='redactor1', password='clave-segura', role='REDACTOR')
+        client = APIClient()
+        client.credentials(HTTP_AUTHORIZATION='Bearer token-vencido-o-corrupto')
+        r = client.post('/api/auth/login/', {'username': 'redactor1', 'password': 'clave-segura'}, format='json')
+        self.assertEqual(r.status_code, 200)
+        self.assertIn('access', r.data)

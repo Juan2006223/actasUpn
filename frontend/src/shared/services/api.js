@@ -11,7 +11,17 @@ export const SESION_EXPIRADA = 'sesion-expirada';
 /** Se emite en window justo antes de cerrar la sesión, para que el autoguardado deje salir sin preguntar. */
 export const EVENTO_CIERRE_SESION = 'cerrando-sesion';
 
+const esRutaDeAcceso = (url = '') => /\/auth\/(login|refresh)\/?$/.test(url);
+
 api.interceptors.request.use((config) => {
+    if (config.headers?.Authorization === '' || esRutaDeAcceso(config.url)) {
+        if (typeof config.headers?.delete === 'function') {
+            config.headers.delete('Authorization');
+        } else if (config.headers) {
+            delete config.headers.Authorization;
+        }
+        return config;
+    }
     const token = localStorage.getItem(CLAVES_SESION.acceso);
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
@@ -36,8 +46,6 @@ function renovarSesion() {
     }
     return renovacionEnCurso;
 }
-
-const esRutaDeAcceso = (url = '') => /\/auth\/(login|refresh)\/?$/.test(url);
 
 api.interceptors.response.use(
     (respuesta) => respuesta,

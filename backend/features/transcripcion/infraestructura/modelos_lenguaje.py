@@ -131,7 +131,7 @@ def crear_modelo(config: Dict[str, Any]) -> ModeloLenguaje:
     if proveedor == 'gemini':
         return ModeloGemini(config.get('GEMINI_API_KEY', ''), config.get('GEMINI_MODELO', 'gemini-flash-latest'))
     if proveedor == 'groq':
-        return ModeloGroq(config.get('GROQ_API_KEY', ''), config.get('GROQ_MODELO', 'llama-3.3-70b-versatile'),
+        return ModeloGroq(config.get('GROQ_API_KEY', ''), config.get('GROQ_MODELO', 'openai/gpt-oss-120b'),
                           int(config.get('GROQ_MAX_CARACTERES', 20000)))
     if proveedor == 'ollama':
         return ModeloOllama(config.get('OLLAMA_URL', 'http://localhost:11434'), config.get('OLLAMA_MODELO', 'qwen2.5:7b'),

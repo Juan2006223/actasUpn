@@ -108,6 +108,18 @@ export function useActas(user, addToast, actasService) {
         }
     };
 
+    const eliminarFirmaPersonal = async () => {
+        try {
+            await actasService.deleteMiFirma();
+            setFirmaPersonal(null);
+            addToast?.('Firma personal eliminada', 'success');
+            return true;
+        } catch {
+            addToast?.('Error al eliminar firma personal', 'error');
+            return false;
+        }
+    };
+
     const comentar = (actaId, texto) => accionSobreActa(
         () => actasService.agregarObservacion(actaId, texto), 'Observación enviada', 'No se pudo enviar la observación');
 
@@ -122,7 +134,7 @@ export function useActas(user, addToast, actasService) {
         actas, misActas, loading,
         firmaPersonal, setFirmaPersonal,
         loadActas, saveActa, autoguardarActa, deleteActa,
-        firmarActa, guardarFirmaPersonal, comentar, cambiarEstado,
+        firmarActa, guardarFirmaPersonal, eliminarFirmaPersonal, comentar, cambiarEstado,
         pendingCount, porRevisarCount, availableYears,
     };
 }

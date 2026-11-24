@@ -135,3 +135,6 @@ class GestionarFirmaUseCase:
     def registrar_firma(self, user_id: int, firma_data: str) -> FirmaUsuarioEntidad:
         entidad = FirmaUsuarioEntidad(id=None, user_id=user_id, firma_data=firma_data)
         return self.repo.guardar_o_actualizar(entidad)
+
+    def eliminar_firma(self, user_id: int) -> bool:
+        return self.repo.eliminar_por_usuario(user_id)
